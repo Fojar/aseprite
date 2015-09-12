@@ -43,7 +43,7 @@ else()
   message(FATAL_ERROR "gtest/gtest.h is missing. Initialize submodules: git submodule update --init --recursive")
 endif()
 
-if(NOT USE_SHARED_CURL)
+if(ENABLE_UPDATER AND NOT USE_SHARED_CURL)
   set(BUILD_RELEASE_DEBUG_DIRS ON BOOL)
   add_subdirectory(curl)
 endif()
