@@ -197,11 +197,11 @@ void PaletteEditorCommand::onExecute(Context* context)
       // Default bounds
       g_window->remapWindow();
 
-      int width = MAX(g_window->getBounds().w, ui::display_w()/2);
+	  Rect bounds = g_window->getBounds();
       g_window->setBounds(Rect(
-          ui::display_w() - width - ToolBar::instance()->getBounds().w,
-          ui::display_h() - g_window->getBounds().h - StatusBar::instance()->getBounds().h,
-          width, g_window->getBounds().h));
+          ui::display_w() - bounds.w - ToolBar::instance()->getBounds().w,
+          ui::display_h() - bounds.h - StatusBar::instance()->getBounds().h,
+		  bounds.w, bounds.h));
 
       // Load window configuration
       load_window_pos(g_window, "PaletteEditor");
