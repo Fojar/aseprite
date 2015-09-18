@@ -20,6 +20,7 @@
 #include "doc/frame.h"
 #include "doc/layer_index.h"
 #include "doc/sprite.h"
+#include "ui/scroll_bar.h"
 #include "ui/timer.h"
 #include "ui/widget.h"
 
@@ -52,6 +53,7 @@ namespace app {
   class Editor;
 
   class Timeline : public ui::Widget
+                 , public ui::ScrollableViewDelegate
                  , public doc::DocumentsObserver
                  , public doc::DocumentObserver
                  , public app::EditorObserver
@@ -82,9 +84,6 @@ namespace app {
     Layer* getLayer() { return m_layer; }
     frame_t getFrame() { return m_frame; }
 
-    void setLayer(Layer* layer);
-    void setFrame(frame_t frame);
-
     State getState() const { return m_state; }
     bool isMovingCel() const;
 
@@ -98,6 +97,11 @@ namespace app {
     // Drag-and-drop operations. These actions are used by commands
     // called from popup menus.
     void dropRange(DropOp op);
+
+    // ScrollableViewDelegate impl
+    gfx::Size getVisibleSize() const override;
+    gfx::Point getViewScroll() const override;
+    void setViewScroll(const gfx::Point& pt) override;
 
   protected:
     bool onProcessMessage(ui::Message* msg) override;
@@ -178,6 +182,8 @@ namespace app {
       int xpos, ypos;
     };
 
+    void setLayer(Layer* layer);
+    void setFrame(frame_t frame);
     bool allLayersVisible();
     bool allLayersInvisible();
     bool allLayersLocked();
@@ -212,6 +218,7 @@ namespace app {
     gfx::Rect getRangeBounds(const Range& range) const;
     void invalidateHit(const Hit& hit);
     void regenerateLayers();
+    void updateScrollBars();
     void updateByMousePos(ui::Message* msg, const gfx::Point& mousePos);
     Hit hitTest(ui::Message* msg, const gfx::Point& mousePos);
     Hit hitTestCel(const gfx::Point& mousePos);
@@ -219,7 +226,8 @@ namespace app {
     void showCel(LayerIndex layer, frame_t frame);
     void showCurrentCel();
     void cleanClk();
-    void setScroll(int x, int y);
+    gfx::Size getScrollableSize() const;
+    gfx::Point getMaxScrollablePos() const;
     LayerIndex getLayerIndex(const Layer* layer) const;
     bool isLayerActive(LayerIndex layerIdx) const;
     bool isFrameActive(frame_t frame) const;
@@ -246,6 +254,9 @@ namespace app {
     DocumentPreferences& docPref() const;
     skin::SkinTheme* skinTheme() const;
 
+    ui::ScrollBar m_hbar;
+    ui::ScrollBar m_vbar;
+    gfx::Rect m_viewportArea;
     Context* m_context;
     Editor* m_editor;
     Document* m_document;
@@ -256,8 +267,6 @@ namespace app {
     Range m_dropRange;
     State m_state;
     std::vector<Layer*> m_layers;
-    int m_scroll_x;
-    int m_scroll_y;
     int m_separator_x;
     int m_separator_w;
     int m_origFrames;
@@ -277,6 +286,7 @@ namespace app {
 
     bool m_scroll;   // True if the drag-and-drop operation is a scroll operation.
     bool m_copy;     // True if the drag-and-drop operation is a copy.
+    bool m_fromTimeline;
 
     AniControls m_aniControls;
 
