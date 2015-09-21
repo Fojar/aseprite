@@ -22,6 +22,7 @@
 #include "app/ui/color_button.h"
 #include "base/bind.h"
 #include "base/convert_to.h"
+#include "base/fs.h"
 #include "base/path.h"
 #include "doc/image.h"
 #include "render/render.h"
@@ -32,6 +33,8 @@
 #include "generated_options.h"
 
 namespace app {
+
+static const char* kSectionThemeId = "section_theme";
 
 using namespace ui;
 
@@ -151,6 +154,10 @@ public:
     undoGotoModified()->setSelected(m_preferences.undo.gotoModified());
     undoAllowNonlinearHistory()->setSelected(m_preferences.undo.allowNonlinearHistory());
 
+    // Theme buttons
+    selectTheme()->Click.connect(Bind<void>(&OptionsWindow::onSelectTheme, this));
+    openThemeFolder()->Click.connect(Bind<void>(&OptionsWindow::onOpenThemeFolder, this));
+
     onChangeGridScope();
     sectionListbox()->selectIndex(m_curSection);
   }
@@ -249,6 +256,10 @@ private:
 
     panel()->showChild(findChild(item->getValue().c_str()));
     m_curSection = sectionListbox()->getSelectedIndex();
+
+    // Load themes
+    if (item->getValue() == kSectionThemeId)
+      loadThemes();
   }
 
   void onChangeGridScope() {
@@ -316,6 +327,51 @@ private:
 
   void onLocateConfigFile() {
     app::launcher::open_folder(app::main_config_filename());
+  }
+
+  void loadThemes() {
+    // Themes already loaded
+    if (themeList()->getItemsCount() > 0)
+      return;
+
+    std::string path = themeFolder();
+    for (auto& fn : base::list_files(path)) {
+      if (!base::is_directory(base::join_path(path, fn)))
+        continue;
+
+      ListItem* item = new ListItem(fn);
+      item->setValue(fn);
+      themeList()->addChild(item);
+
+      // Selected theme
+      if (fn == m_preferences.theme.selected())
+        themeList()->selectChild(item);
+    }
+
+    themeList()->sortItems();
+    themeList()->layout();
+  }
+
+  void onSelectTheme() {
+    ListItem* item = dynamic_cast<ListItem*>(themeList()->getSelectedChild());
+    if (item &&
+        item->getValue() != m_preferences.theme.selected()) {
+      m_preferences.theme.selected(item->getValue());
+
+      ui::Alert::show(PACKAGE
+                      "<<You must restart the program to see the selected theme"
+                      "||&OK");
+    }
+  }
+
+  void onOpenThemeFolder() {
+    launcher::open_folder(themeFolder());
+  }
+
+  static std::string themeFolder() {
+    ResourceFinder rf;
+    rf.includeDataDir("skins");
+    return rf.defaultFilename();
   }
 
   Preferences& m_preferences;
