@@ -16,8 +16,6 @@
 #include "app/context_access.h"
 #include "app/document_api.h"
 #include "app/document_range.h"
-#include "app/find_widget.h"
-#include "app/load_widget.h"
 #include "app/modules/gui.h"
 #include "app/transaction.h"
 #include "app/ui/main_window.h"
@@ -34,7 +32,7 @@
 #include "doc/sprite.h"
 #include "ui/ui.h"
 
-#include "generated_cel_properties.h"
+#include "cel_properties.xml.h"
 
 namespace app {
 

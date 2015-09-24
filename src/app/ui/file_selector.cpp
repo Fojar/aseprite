@@ -14,9 +14,7 @@
 #include "app/app.h"
 #include "app/console.h"
 #include "app/file/file.h"
-#include "app/find_widget.h"
 #include "app/ini_file.h"
-#include "app/load_widget.h"
 #include "app/modules/gfx.h"
 #include "app/modules/gui.h"
 #include "app/recent_files.h"
@@ -32,7 +30,7 @@
 #include "base/unique_ptr.h"
 #include "ui/ui.h"
 
-#include "generated_new_folder_window.h"
+#include "new_folder_window.xml.h"
 
 #include <algorithm>
 #include <cctype>
@@ -101,7 +99,7 @@ public:
   CustomFileNameEntry()
     : m_fileList(nullptr) {
     setEditable(true);
-    getEntryWidget()->EntryChange.connect(&CustomFileNameEntry::onEntryChange, this);
+    getEntryWidget()->Change.connect(&CustomFileNameEntry::onEntryChange, this);
   }
 
   void setAssociatedFileList(FileList* fileList) {

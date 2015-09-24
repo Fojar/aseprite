@@ -14,7 +14,6 @@
 #include "app/commands/cmd_set_palette.h"
 #include "app/commands/commands.h"
 #include "app/launcher.h"
-#include "app/load_widget.h"
 #include "app/res/palettes_loader_delegate.h"
 #include "app/ui/palettes_listbox.h"
 #include "app/ui_context.h"
@@ -24,7 +23,7 @@
 #include "ui/theme.h"
 #include "ui/view.h"
 
-#include "generated_palette_popup.h"
+#include "palette_popup.xml.h"
 
 namespace app {
 

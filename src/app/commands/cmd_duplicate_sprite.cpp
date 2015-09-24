@@ -12,16 +12,14 @@
 #include "app/app.h"
 #include "app/commands/command.h"
 #include "app/context_access.h"
-#include "app/find_widget.h"
 #include "app/ini_file.h"
-#include "app/load_widget.h"
 #include "app/modules/editors.h"
 #include "app/ui_context.h"
 #include "base/path.h"
 #include "doc/sprite.h"
 #include "ui/ui.h"
 
-#include "generated_duplicate_sprite.h"
+#include "duplicate_sprite.xml.h"
 
 #include <cstdio>
 

@@ -28,7 +28,7 @@
 #include "ui/alert.h"
 #include "ui/button.h"
 
-#include "generated_gif_options.h"
+#include "gif_options.xml.h"
 
 #include <gif_lib.h>
 
@@ -182,7 +182,7 @@ public:
     , m_remap(256)
     , m_hasLocalColormaps(false)
     , m_firstLocalColormap(nullptr) {
-    // LOG("GIF background index = %d\n", (int)m_gifFile->SBackGroundColor);
+    DLOG("[GifDecoder] GIF background index = %d\n", (int)m_gifFile->SBackGroundColor);
   }
 
   ~GifDecoder() {
@@ -300,7 +300,7 @@ private:
     UniquePtr<Image> frameImage(
       readFrameIndexedImage(frameBounds));
 
-    // LOG("Frame[%d] transparent index = %d\n", (int)m_frameNum, m_localTransparentIndex);
+    DLOG("[GifDecoder] Frame[%d] transparent index = %d\n", (int)m_frameNum, m_localTransparentIndex);
 
     if (m_frameNum == 0) {
       if (m_localTransparentIndex >= 0)
@@ -434,6 +434,14 @@ private:
     // Get the list of used palette entries
     PalettePicks usedEntries(ncolors);
     if (isLocalColormap) {
+      // With this we avoid discarding the transparent index when a
+      // frame indicates that it uses a specific index as transparent
+      // but the image is completely opaque anyway.
+      if (m_localTransparentIndex >= 0 &&
+          m_localTransparentIndex < ncolors) {
+        usedEntries[m_localTransparentIndex] = true;
+      }
+
       for (const auto& i : LockImageBits<IndexedTraits>(frameImage)) {
         if (i >= 0 && i < ncolors)
           usedEntries[i] = true;
@@ -602,8 +610,8 @@ private:
         m_localTransparentIndex = (extension[1] & 1) ? extension[4]: -1;
         m_frameDelay            = (extension[3] << 8) | extension[2];
 
-        // LOG("Disposal method: %d\nTransparent index: %d\nFrame delay: %d\n",
-        //   m_disposalMethod, m_localTransparentIndex, m_frameDelay);
+        DLOG("[GifDecoder] Disposal method: %d\n  Transparent index: %d\n  Frame delay: %d\n",
+             m_disposalMethod, m_localTransparentIndex, m_frameDelay);
       }
     }
 
@@ -984,10 +992,10 @@ private:
         }
       }
 
-      // LOG("frameBounds=%d %d %d %d  prev=%d %d %d %d  next=%d %d %d %d\n",
-      //        frameBounds.x, frameBounds.y, frameBounds.w, frameBounds.h,
-      //        prev.x, prev.y, prev.w, prev.h,
-      //        next.x, next.y, next.w, next.h);
+      DLOG("[GifEncoder] frameBounds=%d %d %d %d  prev=%d %d %d %d  next=%d %d %d %d\n",
+           frameBounds.x, frameBounds.y, frameBounds.w, frameBounds.h,
+           prev.x, prev.y, prev.w, prev.h,
+           next.x, next.y, next.w, next.h);
     }
   }
 
@@ -1021,6 +1029,18 @@ private:
     // Convert the frameBounds area of m_currentImage (RGB) to frameImage (Indexed)
     // bool needsTransparent = false;
     PalettePicks usedColors(framePalette->size());
+
+    // If the sprite needs a transparent color we mark it as used so
+    // the palette includes a spot for it. It doesn't matter if the
+    // image doesn't use the transparent index, if the sprite isn't
+    // opaque we need the transparent index anyway.
+    if (m_transparentIndex >= 0) {
+      int i = m_transparentIndex;
+      if (i >= usedColors.size())
+        usedColors.resize(i+1);
+      usedColors[i] = true;
+    }
+
     {
       LockImageBits<RgbTraits> bits(m_currentImage, frameBounds);
       auto it = bits.begin();

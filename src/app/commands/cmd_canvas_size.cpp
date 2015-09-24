@@ -12,8 +12,6 @@
 #include "app/commands/command.h"
 #include "app/context_access.h"
 #include "app/document_api.h"
-#include "app/find_widget.h"
-#include "app/load_widget.h"
 #include "app/modules/editors.h"
 #include "app/modules/gui.h"
 #include "app/ui/button_set.h"
@@ -29,7 +27,7 @@
 #include "doc/sprite.h"
 #include "ui/ui.h"
 
-#include "generated_canvas_size.h"
+#include "canvas_size.xml.h"
 
 namespace app {
 
@@ -61,13 +59,13 @@ public:
     setTop(0);
     setBottom(0);
 
-    width() ->EntryChange.connect(Bind<void>(&CanvasSizeWindow::onSizeChange, this));
-    height()->EntryChange.connect(Bind<void>(&CanvasSizeWindow::onSizeChange, this));
+    width() ->Change.connect(Bind<void>(&CanvasSizeWindow::onSizeChange, this));
+    height()->Change.connect(Bind<void>(&CanvasSizeWindow::onSizeChange, this));
     dir()   ->ItemChange.connect(Bind<void>(&CanvasSizeWindow::onDirChange, this));;
-    left()  ->EntryChange.connect(Bind<void>(&CanvasSizeWindow::onBorderChange, this));
-    right() ->EntryChange.connect(Bind<void>(&CanvasSizeWindow::onBorderChange, this));
-    top()   ->EntryChange.connect(Bind<void>(&CanvasSizeWindow::onBorderChange, this));
-    bottom()->EntryChange.connect(Bind<void>(&CanvasSizeWindow::onBorderChange, this));
+    left()  ->Change.connect(Bind<void>(&CanvasSizeWindow::onBorderChange, this));
+    right() ->Change.connect(Bind<void>(&CanvasSizeWindow::onBorderChange, this));
+    top()   ->Change.connect(Bind<void>(&CanvasSizeWindow::onBorderChange, this));
+    bottom()->Change.connect(Bind<void>(&CanvasSizeWindow::onBorderChange, this));
 
     m_editor->setState(m_selectBoxState);
 

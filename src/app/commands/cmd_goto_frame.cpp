@@ -11,13 +11,13 @@
 
 #include "app/commands/command.h"
 #include "app/commands/params.h"
-#include "app/find_widget.h"
-#include "app/load_widget.h"
 #include "app/modules/editors.h"
 #include "app/modules/gui.h"
 #include "app/ui/editor/editor.h"
 #include "doc/sprite.h"
 #include "ui/window.h"
+
+#include "goto_frame.xml.h"
 
 namespace app {
 
@@ -117,17 +117,15 @@ protected:
 
   frame_t onGetFrame(Editor* editor) override {
     if (m_frame == 0) {
-      base::UniquePtr<Window> window(app::load_widget<Window>("goto_frame.xml", "goto_frame"));
-      Widget* frame = app::find_widget<Widget>(window, "frame");
-      Widget* ok = app::find_widget<Widget>(window, "ok");
+      app::gen::GotoFrame window;
 
-      frame->setTextf("%d", editor->frame()+1);
+      window.frame()->setTextf("%d", editor->frame()+1);
 
-      window->openWindowInForeground();
-      if (window->getKiller() != ok)
+      window.openWindowInForeground();
+      if (window.getKiller() != window.ok())
         return editor->frame();
 
-      m_frame = frame->getTextInt();
+      m_frame = window.frame()->getTextInt();
     }
 
     return MID(0, m_frame-1, editor->sprite()->lastFrame());

@@ -11,12 +11,12 @@
 
 #include "app/app.h"
 #include "app/commands/command.h"
-#include "app/find_widget.h"
 #include "app/ini_file.h"
-#include "app/load_widget.h"
 #include "app/ui/keyboard_shortcuts.h"
 #include "app/ui/main_window.h"
 #include "ui/ui.h"
+
+#include "advanced_mode.xml.h"
 
 #include <cstdio>
 
@@ -65,16 +65,14 @@ void AdvancedModeCommand::onExecute(Context* context)
       get_config_bool("AdvancedMode", "Warning", true)) {
     Key* key = KeyboardShortcuts::instance()->command(this->id().c_str());
     if (!key->accels().empty()) {
-      base::UniquePtr<Window> window(app::load_widget<Window>("advanced_mode.xml", "advanced_mode_warning"));
-      Widget* warning_label = app::find_widget<Widget>(window, "warning_label");
-      Widget* donot_show = app::find_widget<Widget>(window, "donot_show");
+      app::gen::AdvancedMode window;
 
-      warning_label->setTextf("You can go back pressing \"%s\" key.",
+      window.warningLabel()->setTextf("You can go back pressing \"%s\" key.",
         key->accels().front().toString().c_str());
 
-      window->openWindowInForeground();
+      window.openWindowInForeground();
 
-      set_config_bool("AdvancedMode", "Warning", !donot_show->isSelected());
+      set_config_bool("AdvancedMode", "Warning", !window.donotShow()->isSelected());
     }
   }
 }

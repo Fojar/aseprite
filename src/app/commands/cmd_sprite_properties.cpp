@@ -13,8 +13,6 @@
 #include "app/commands/command.h"
 #include "app/context_access.h"
 #include "app/document_api.h"
-#include "app/find_widget.h"
-#include "app/load_widget.h"
 #include "app/modules/gui.h"
 #include "app/ui/color_button.h"
 #include "app/transaction.h"
@@ -25,7 +23,7 @@
 #include "doc/sprite.h"
 #include "ui/ui.h"
 
-#include "generated_sprite_properties.h"
+#include "sprite_properties.xml.h"
 
 #include <cstdio>
 

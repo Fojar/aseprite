@@ -14,8 +14,6 @@
 #include "app/commands/params.h"
 #include "app/context_access.h"
 #include "app/document_api.h"
-#include "app/find_widget.h"
-#include "app/load_widget.h"
 #include "app/ui/main_window.h"
 #include "app/ui/timeline.h"
 #include "app/transaction.h"
@@ -23,7 +21,7 @@
 #include "doc/sprite.h"
 #include "ui/ui.h"
 
-#include "generated_frame_properties.h"
+#include "frame_properties.xml.h"
 
 namespace app {
 
