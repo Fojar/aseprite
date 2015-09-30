@@ -23,7 +23,7 @@ namespace tools {
 // (or foreground/background colors)
 class PaintInk : public Ink {
 public:
-  enum Type { Merge, WithFg, WithBg, Copy, LockAlpha };
+  enum Type { Simple, WithFg, WithBg, Copy, LockAlpha };
 
 private:
   Type m_type;
@@ -40,7 +40,7 @@ public:
   {
     switch (m_type) {
 
-      case Merge:
+      case Simple:
         // Do nothing, use the default colors
         break;
 
@@ -61,7 +61,7 @@ public:
       m_proc = ink_processing[INK_BRUSH][depth];
     else {
       switch (m_type) {
-        case Merge: {
+        case Simple: {
           bool opaque = false;
 
           if (loop->getOpacity() == 255) {
@@ -207,13 +207,33 @@ public:
   {
     switch (m_type) {
 
-      case Eraser:
-        m_proc = ink_processing[INK_COPY][MID(0, loop->sprite()->pixelFormat(), 2)];
+      case Eraser: {
+        color_t primary = app_get_color_to_clear_layer(loop->getLayer());
+        color_t secondary = app_get_color_to_clear_layer(loop->getLayer());
+
+        if (loop->getOpacity() == 255) {
+          m_proc = ink_processing[INK_COPY][MID(0, loop->sprite()->pixelFormat(), 2)];
+        }
+        else {
+          // For opaque layers
+          if (loop->getLayer()->isBackground()) {
+            m_proc = ink_processing[INK_TRANSPARENT][MID(0, loop->sprite()->pixelFormat(), 2)];
+          }
+          // For transparent layers
+          else {
+            m_proc = ink_processing[INK_MERGE][MID(0, loop->sprite()->pixelFormat(), 2)];
+
+            if (loop->sprite()->pixelFormat() == IMAGE_INDEXED) {
+              primary = loop->sprite()->transparentColor();
+            }
+          }
+        }
 
         // TODO app_get_color_to_clear_layer should receive the context as parameter
-        loop->setPrimaryColor(app_get_color_to_clear_layer(loop->getLayer()));
-        loop->setSecondaryColor(app_get_color_to_clear_layer(loop->getLayer()));
+        loop->setPrimaryColor(primary);
+        loop->setSecondaryColor(secondary);
         break;
+      }
 
       case ReplaceFgWithBg:
         m_proc = ink_processing[INK_REPLACE][MID(0, loop->sprite()->pixelFormat(), 2)];

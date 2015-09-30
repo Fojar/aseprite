@@ -1,5 +1,6 @@
 // Aseprite
 // Copyright (C) 2015 Gabriel Rauter
+// Copyright (C) 2015 David Capello
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License version 2 as
@@ -29,8 +30,7 @@
 #include <algorithm>
 #include <map>
 
-
-//include webp librarys
+// Include webp libraries
 #include <webp/decode.h>
 #include <webp/encode.h>
 
@@ -65,35 +65,34 @@ FileFormat* CreateWebPFormat()
   return new WebPFormat;
 }
 
-const char* getDecoderErrorMessage(VP8StatusCode statusCode) {
+const char* getDecoderErrorMessage(VP8StatusCode statusCode)
+{
   switch (statusCode) {
-  case VP8_STATUS_OK: return ""; break;
-  case VP8_STATUS_OUT_OF_MEMORY: return "out of memory"; break;
-  case VP8_STATUS_INVALID_PARAM: return "invalid parameters"; break;
-  case VP8_STATUS_BITSTREAM_ERROR: return "bitstream error"; break;
-  case VP8_STATUS_UNSUPPORTED_FEATURE: return "unsupported feature"; break;
-  case VP8_STATUS_SUSPENDED: return "suspended"; break;
-  case VP8_STATUS_USER_ABORT: return "user aborted"; break;
-  case VP8_STATUS_NOT_ENOUGH_DATA: return "not enough data"; break;
-  default: return "unknown error"; break;
+    case VP8_STATUS_OK: return ""; break;
+    case VP8_STATUS_OUT_OF_MEMORY: return "out of memory"; break;
+    case VP8_STATUS_INVALID_PARAM: return "invalid parameters"; break;
+    case VP8_STATUS_BITSTREAM_ERROR: return "bitstream error"; break;
+    case VP8_STATUS_UNSUPPORTED_FEATURE: return "unsupported feature"; break;
+    case VP8_STATUS_SUSPENDED: return "suspended"; break;
+    case VP8_STATUS_USER_ABORT: return "user aborted"; break;
+    case VP8_STATUS_NOT_ENOUGH_DATA: return "not enough data"; break;
+    default: return "unknown error"; break;
   }
 }
 
 bool WebPFormat::onLoad(FileOp* fop)
 {
-  FileHandle handle(open_file_with_exception(fop->filename, "rb"));
+  FileHandle handle(open_file_with_exception(fop->filename(), "rb"));
   FILE* fp = handle.get();
 
-  if (fseek(fp, 0, SEEK_END) != 0) {
-    fop_error(fop, "Error while getting WebP file size for %s\n", fop->filename.c_str());
-    return false;
+  long len = 0;
+  if (fseek(fp, 0, SEEK_END) == 0) {
+    len = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
   }
 
-  long len = ftell(fp);
-  rewind(fp);
-
   if (len < 4) {
-    fop_error(fop, "%s is corrupt or not a WebP file\n", fop->filename.c_str());
+    fop->setError("The specified file is not a WebP file\n");
     return false;
   }
 
@@ -101,24 +100,24 @@ bool WebPFormat::onLoad(FileOp* fop)
   uint8_t* data = &buf.front();
 
   if (!fread(data, sizeof(uint8_t), len, fp)) {
-    fop_error(fop, "Error while writing to %s to memory\n", fop->filename.c_str());
+    fop->setError("Error moving the whole WebP file to memory\n");
     return false;
   }
 
   WebPDecoderConfig config;
   if (!WebPInitDecoderConfig(&config)) {
-    fop_error(fop, "LibWebP version mismatch %s\n", fop->filename.c_str());
+    fop->setError("WebP decoder cannot load this webp file version\n");
     return false;
   }
 
   if (WebPGetFeatures(data, len, &config.input) != VP8_STATUS_OK) {
-    fop_error(fop, "Bad bitstream in %s\n", fop->filename.c_str());
+    fop->setError("Bad bitstream in WebP file\n");
     return false;
   }
 
-  fop->seq.has_alpha = (config.input.has_alpha != 0);
+  fop->sequenceSetHasAlpha(config.input.has_alpha != 0);
 
-  Image* image = fop_sequence_image(fop, IMAGE_RGB, config.input.width, config.input.height);
+  Image* image = fop->sequenceImage(IMAGE_RGB, config.input.width, config.input.height);
 
   config.output.colorspace = MODE_RGBA;
   config.output.u.RGBA.rgba = (uint8_t*)image->getPixelAddress(0, 0);
@@ -128,7 +127,7 @@ bool WebPFormat::onLoad(FileOp* fop)
 
   WebPIDecoder* idec = WebPIDecode(NULL, 0, &config);
   if (idec == NULL) {
-    fop_error(fop, "Error creating WebP decoder for %s\n", fop->filename.c_str());
+    fop->setError("Error creating WebP decoder\n");
     return false;
   }
 
@@ -137,24 +136,29 @@ bool WebPFormat::onLoad(FileOp* fop)
 
   while (bytes_remaining > 0) {
     VP8StatusCode status = WebPIAppend(idec, data, bytes_read);
-    if (status == VP8_STATUS_OK || status == VP8_STATUS_SUSPENDED) {
+    if (status == VP8_STATUS_OK ||
+        status == VP8_STATUS_SUSPENDED) {
       bytes_remaining -= bytes_read;
       data += bytes_read;
-      if (bytes_remaining < bytes_read) bytes_read = bytes_remaining;
-      fop_progress(fop, 1.0f - ((float)std::max(bytes_remaining, 0l)/(float)len));
-    } else {
-      fop_error(fop, "Error during decoding %s : %s\n", fop->filename.c_str(), getDecoderErrorMessage(status));
+      if (bytes_remaining < bytes_read)
+        bytes_read = bytes_remaining;
+      fop->setProgress(1.0f - ((float)std::max(bytes_remaining, 0l)/(float)len));
+    }
+    else {
+      fop->setError("Error decoding WebP data: %s\n", getDecoderErrorMessage(status));
       WebPIDelete(idec);
       WebPFreeDecBuffer(&config.output);
       return false;
     }
-    if (fop_is_stop(fop))
+    if (fop->isStop())
       break;
   }
 
-  base::SharedPtr<WebPOptions> webPOptions = base::SharedPtr<WebPOptions>(new WebPOptions());
-  fop->seq.format_options = webPOptions;
-  webPOptions->setLossless(std::min(config.input.format - 1, 1));
+  if (!fop->sequenceGetFormatOptions()) {
+    base::SharedPtr<WebPOptions> webPOptions(new WebPOptions());
+    webPOptions->setLossless(std::min(config.input.format - 1, 1));
+    fop->sequenceSetFormatOptions(webPOptions);
+  }
 
   WebPIDelete(idec);
   WebPFreeDecBuffer(&config.output);
@@ -162,9 +166,21 @@ bool WebPFormat::onLoad(FileOp* fop)
 }
 
 #ifdef ENABLE_SAVE
-struct writerData {
+
+struct WriterData {
   FILE* fp;
   FileOp* fop;
+};
+
+class ScopedWebPPicture {
+public:
+  ScopedWebPPicture(WebPPicture& pic) : m_pic(pic) {
+  }
+  ~ScopedWebPPicture() {
+    WebPPictureFree(&m_pic);
+  }
+private:
+  WebPPicture& m_pic;
 };
 
 const char* getEncoderErrorMessage(WebPEncodingError errorCode) {
@@ -206,57 +222,63 @@ int WebPConfigLosslessPreset(WebPConfig* config, int level) {
 
 static int ProgressReport(int percent, const WebPPicture* const pic)
 {
-  fop_progress(((writerData*)pic->custom_ptr)->fop, (double)percent/(double)100);
-  if (fop_is_stop(((writerData*)pic->custom_ptr)->fop)) return false;
-  return true;
+  FileOp* fop = ((WriterData*)pic->custom_ptr)->fop;
+  fop->setProgress((double)percent/(double)100);
+  if (fop->isStop())
+    return false;
+  else
+    return true;
 }
 
 static int FileWriter(const uint8_t* data, size_t data_size, const WebPPicture* const pic)
 {
-  return data_size ? (fwrite(data, data_size, 1, ((writerData*)pic->custom_ptr)->fp) == 1) : 1;
+  return (data_size ? (fwrite(data, data_size, 1, ((WriterData*)pic->custom_ptr)->fp) == 1) : 1);
 }
 
 bool WebPFormat::onSave(FileOp* fop)
 {
-  FileHandle handle(open_file_with_exception(fop->filename, "wb"));
+  FileHandle handle(open_file_with_exception(fop->filename(), "wb"));
   FILE* fp = handle.get();
 
-  struct writerData wd = {fp, fop};
+  WriterData wd = { fp, fop };
 
-  Image* image = fop->seq.image.get();
-  if (image->width() > WEBP_MAX_DIMENSION || image->height() > WEBP_MAX_DIMENSION) {
-   fop_error(
-     fop, "Error: WebP can only have a maximum width and height of %i but your %s has a size of %i x %i\n",
-     WEBP_MAX_DIMENSION, fop->filename.c_str(), image->width(), image->height()
-   );
-   return false;
+  const Image* image = fop->sequenceImage();
+  if (image->width() > WEBP_MAX_DIMENSION ||
+      image->height() > WEBP_MAX_DIMENSION) {
+    fop->setError("WebP format cannot store %dx%d images. The maximum allowed size is %dx%d\n",
+                  image->width(), image->height(),
+                  WEBP_MAX_DIMENSION, WEBP_MAX_DIMENSION);
+    return false;
   }
 
-  base::SharedPtr<WebPOptions> webp_options = fop->seq.format_options;
+  base::SharedPtr<WebPOptions> webp_options =
+    fop->sequenceGetFormatOptions();
 
   WebPConfig config;
 
   if (webp_options->lossless()) {
-    if (!(WebPConfigInit(&config) && WebPConfigLosslessPreset(&config, webp_options->getMethod()))) {
-     fop_error(fop, "Error for WebP Config Version for file %s\n", fop->filename.c_str());
-     return false;
+    if (!(WebPConfigInit(&config) &&
+          WebPConfigLosslessPreset(&config, webp_options->getMethod()))) {
+      fop->setError("Error in WebP configuration\n");
+      return false;
     }
     config.image_hint = webp_options->getImageHint();
-  } else {
+  }
+  else {
     if (!WebPConfigPreset(&config, webp_options->getImagePreset(), static_cast<float>(webp_options->getQuality()))) {
-     fop_error(fop, "Error for WebP Config Version for file %s\n", fop->filename.c_str());
-     return false;
+      fop->setError("Error in WebP configuration preset\n");
+      return false;
     }
   }
 
   if (!WebPValidateConfig(&config)) {
-   fop_error(fop, "Error in WebP Encoder Config for file %s\n", fop->filename.c_str());
-   return false;
+    fop->setError("Error validating WebP encoder configuration\n");
+    return false;
   }
 
   WebPPicture pic;
   if (!WebPPictureInit(&pic)) {
-    fop_error(fop, "Error for WebP Picture Version mismatch for file %s\n", fop->filename.c_str());
+    fop->setError("Error encoding WebP picture, version mismatch\n");
     return false;
   }
 
@@ -267,13 +289,14 @@ bool WebPFormat::onSave(FileOp* fop)
   }
 
   if (!WebPPictureAlloc(&pic)) {
-    fop_error(fop, "Error for  WebP Picture memory allocations for file %s\n", fop->filename.c_str());
+    fop->setError("Not enough memory to allocate a WebP picture\n");
     return false;
   }
 
+  ScopedWebPPicture scopedPic(pic); // Calls WebPPictureFree automatically
+
   if (!WebPPictureImportRGBA(&pic, (uint8_t*)image->getPixelAddress(0, 0), image->width() * sizeof(uint32_t))) {
-    fop_error(fop, "Error for LibWebP Import RGBA Buffer into Picture for %s\n", fop->filename.c_str());
-    WebPPictureFree(&pic);
+    fop->setError("Error converting RGBA data into a WebP picture\n");
     return false;
   }
 
@@ -282,28 +305,29 @@ bool WebPFormat::onSave(FileOp* fop)
   pic.progress_hook = ProgressReport;
 
   if (!WebPEncode(&config, &pic)) {
-    fop_error(fop, "Error for LibWebP while Encoding %s: %s\n", fop->filename.c_str(), getEncoderErrorMessage(pic.error_code));
-    WebPPictureFree(&pic);
+    fop->setError("Error encoding image into WebP: %s\n",
+                  getEncoderErrorMessage(pic.error_code));
     return false;
   }
 
-  WebPPictureFree(&pic);
   return true;
 }
-#endif
+
+#endif  // ENABLE_SAVE
 
 // Shows the WebP configuration dialog.
 base::SharedPtr<FormatOptions> WebPFormat::onGetFormatOptions(FileOp* fop)
 {
   base::SharedPtr<WebPOptions> webp_options;
-  if (fop->document->getFormatOptions())
-    webp_options = base::SharedPtr<WebPOptions>(fop->document->getFormatOptions());
+  if (fop->document()->getFormatOptions())
+    webp_options = base::SharedPtr<WebPOptions>(fop->document()->getFormatOptions());
 
   if (!webp_options)
     webp_options.reset(new WebPOptions);
 
   // Non-interactive mode
-  if (!fop->context || !fop->context->isUIAvailable())
+  if (!fop->context() ||
+      !fop->context()->isUIAvailable())
     return webp_options;
 
   try {
