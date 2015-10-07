@@ -31,7 +31,9 @@ namespace she {
   template<typename T>
   class WinWindow {
   public:
-    WinWindow() {
+    WinWindow()
+      : m_clientSize(1, 1)
+      , m_restoredSize(0, 0) {
       registerClass();
       m_hwnd = createHwnd(this);
       m_hcursor = NULL;
@@ -50,6 +52,7 @@ namespace she {
 
     void setScale(int scale) {
       m_scale = scale;
+      static_cast<T*>(this)->resizeImpl(m_clientSize);
     }
 
     void setVisible(bool visible) {
@@ -150,7 +153,10 @@ namespace she {
     }
 
     void updateWindow(const gfx::Rect& bounds) {
-      RECT rc = { bounds.x, bounds.y, bounds.x+bounds.w, bounds.y+bounds.h };
+      RECT rc = { bounds.x*m_scale,
+                  bounds.y*m_scale,
+                  bounds.x*m_scale+bounds.w*m_scale,
+                  bounds.y*m_scale+bounds.h*m_scale };
       InvalidateRect(m_hwnd, &rc, FALSE);
       UpdateWindow(m_hwnd);
     }
@@ -186,14 +192,13 @@ namespace she {
         }
 
         case WM_SIZE: {
-          switch (wparam) {
-            case SIZE_MAXIMIZED:
-            case SIZE_RESTORED:
-              m_clientSize.w = GET_X_LPARAM(lparam);
-              m_clientSize.h = GET_Y_LPARAM(lparam);
+          int w = GET_X_LPARAM(lparam);
+          int h = GET_Y_LPARAM(lparam);
 
-              static_cast<T*>(this)->resizeImpl(m_clientSize);
-              break;
+          if (w > 0 && h > 0) {
+            m_clientSize.w = w;
+            m_clientSize.h = h;
+            static_cast<T*>(this)->resizeImpl(m_clientSize);
           }
 
           WINDOWPLACEMENT pl;
@@ -422,6 +427,10 @@ namespace she {
           // to the DefWindowProc() in some cases (e.g. F10 or Alt keys)
           return 0;
         }
+
+        case WM_MENUCHAR:
+          // Avoid playing a sound when Alt+key is pressed and it's not in a native menu
+          return MAKELONG(0, MNC_CLOSE);
 
         case WM_DROPFILES: {
           HDROP hdrop = (HDROP)(wparam);

@@ -10,32 +10,55 @@
 
 #include "she/skia/skia_window_osx.h"
 
+#include "she/event.h"
 #include "she/event_queue.h"
 #include "she/osx/window.h"
 #include "gfx/size.h"
 
+#if SK_SUPPORT_GPU
+
+  #include "GrContext.h"
+  #include "she/gl/gl_context_cgl.h"
+  #include "she/skia/gl_context_skia.h"
+
+#endif
+
 namespace she {
 
-class SkiaWindow::Impl : public CloseDelegate {
+class SkiaWindow::Impl : public OSXWindowImpl {
 public:
   bool closing;
   int scale;
   OSXWindow* window;
-  gfx::Size clientSize;
-  gfx::Size restoredSize;
+#if SK_SUPPORT_GPU
+  GLContextSkia<GLContextCGL> gl;
+#endif
 
-  void notifyClose() override {
+  Impl()
+#if SK_SUPPORT_GPU
+    : gl(nullptr)
+#endif
+  {
+    closing = false;
+    scale = 1;
+    window = [[OSXWindow alloc] initWithImpl:this];
+  }
+
+  // OSXWindowImpl impl
+
+  void onClose() override {
     closing = true;
   }
 };
 
 SkiaWindow::SkiaWindow(EventQueue* queue, SkiaDisplay* display)
-  : m_impl(new SkiaWindow::Impl)
+  : m_impl(nullptr)
 {
-  m_impl->closing = false;
-  m_impl->scale = 1;
-  m_impl->window = [OSXWindow new];
-  [m_impl->window setCloseDelegate:m_impl];
+  dispatch_sync(
+    dispatch_get_main_queue(),
+    ^{
+      m_impl = new SkiaWindow::Impl;
+    });
 }
 
 SkiaWindow::~SkiaWindow()
@@ -79,12 +102,18 @@ bool SkiaWindow::isMaximized() const
 
 gfx::Size SkiaWindow::clientSize() const
 {
-  return m_impl->clientSize;
+  if (m_impl->closing)
+    return gfx::Size(0, 0);
+
+  return m_impl->window.clientSize;
 }
 
 gfx::Size SkiaWindow::restoredSize() const
 {
-  return m_impl->restoredSize;
+  if (m_impl->closing)
+    return gfx::Size(0, 0);
+
+  return m_impl->window.restoredSize;
 }
 
 void SkiaWindow::setTitle(const std::string& title)
@@ -119,7 +148,7 @@ void SkiaWindow::updateWindow(const gfx::Rect& bounds)
 
 void* SkiaWindow::handle()
 {
-  return nullptr;
+  return (void*)m_impl->window;
 }
 
 } // namespace she

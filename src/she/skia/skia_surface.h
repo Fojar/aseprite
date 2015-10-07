@@ -27,8 +27,8 @@ inline SkColor to_skia(gfx::Color c) {
   return SkPremultiplyARGBInline(gfx::geta(c), gfx::getr(c), gfx::getg(c), gfx::getb(c));
 }
 
-inline SkRect to_skia(const gfx::Rect& rc) {
-  return SkRect::Make(SkIRect::MakeXYWH(rc.x, rc.y, rc.w, rc.h));
+inline SkIRect to_skia(const gfx::Rect& rc) {
+  return SkIRect::MakeXYWH(rc.x, rc.y, rc.w, rc.h);
 }
 
 class SkiaSurface : public NonDisposableSurface
@@ -40,9 +40,12 @@ public:
 
   SkiaSurface(SkSurface* surface)
     : m_surface(surface)
-    , m_canvas(m_surface->getCanvas())
+    , m_canvas(nullptr)
     , m_clip(0, 0, width(), height())
   {
+    ASSERT(m_surface);
+    if (m_surface)
+      m_canvas = m_surface->getCanvas();
   }
 
   ~SkiaSurface() {
@@ -105,16 +108,16 @@ public:
 
   void setClipBounds(const gfx::Rect& rc) override {
     m_clip = rc;
-    m_canvas->clipRect(to_skia(m_clip), SkRegion::kReplace_Op);
+    m_canvas->clipRect(SkRect::Make(to_skia(m_clip)), SkRegion::kReplace_Op);
   }
 
   bool intersectClipRect(const gfx::Rect& rc) override {
     m_clip &= rc;
-    m_canvas->clipRect(to_skia(m_clip), SkRegion::kReplace_Op);
+    m_canvas->clipRect(SkRect::Make(to_skia(m_clip)), SkRegion::kReplace_Op);
     return !m_clip.isEmpty();
   }
 
-  void setDrawMode(DrawMode mode, int param) {
+  void setDrawMode(DrawMode mode, int param) override {
     // TODO
   }
 
@@ -136,7 +139,8 @@ public:
     SkCanvas canvas(result);
     SkRect srcRect = SkRect::Make(SkIRect::MakeXYWH(0, 0, width(), height()));
     SkRect dstRect = SkRect::Make(SkIRect::MakeXYWH(0, 0, result.width(), result.height()));
-    canvas.drawBitmapRectToRect(m_bitmap, &srcRect, dstRect, &paint);
+    canvas.drawBitmapRect(m_bitmap, srcRect, dstRect, &paint,
+                          SkCanvas::kStrict_SrcRectConstraint);
 
     swapBitmap(result);
   }
@@ -160,7 +164,7 @@ public:
   }
 
   void clear() override {
-    // TODO
+    m_canvas->clear(0);
   }
 
   uint8_t* getData(int x, int y) const override {
@@ -281,7 +285,7 @@ public:
     SkPaint paint;
     paint.setColor(to_skia(color));
     paint.setStyle(SkPaint::kStroke_Style);
-    m_canvas->drawRect(to_skia(rc), paint);
+    m_canvas->drawIRect(to_skia(gfx::Rect(rc.x, rc.y, rc.w-1, rc.h-1)), paint);
   }
 
   void fillRect(gfx::Color color, const gfx::Rect& rc) override {
@@ -289,26 +293,14 @@ public:
     paint.setColor(to_skia(color));
     paint.setStyle(SkPaint::kFill_Style);
     paint.setXfermodeMode(SkXfermode::kSrcOver_Mode);
-    m_canvas->drawRect(to_skia(rc), paint);
+    m_canvas->drawIRect(to_skia(rc), paint);
   }
 
   void blitTo(LockedSurface* dest, int srcx, int srcy, int dstx, int dsty, int width, int height) const override {
-    if (m_surface) {
-      // m_canvas->flush();
-
-      SkImageInfo info = SkImageInfo::MakeN32Premul(width, height);
-      std::vector<uint32_t> pixels(width * height * 4);
-      m_canvas->readPixels(info, (void*)&pixels[0], 4*width, srcx, srcy);
-      ((SkiaSurface*)dest)->m_canvas->writePixels(info, (void*)&pixels[0], 4*width, dstx, dsty);
-    }
-    else {
-      SkPaint paint;
-      paint.setXfermodeMode(SkXfermode::kSrc_Mode);
-
-      SkRect srcRect = SkRect::Make(SkIRect::MakeXYWH(srcx, srcy, width, height));
-      SkRect dstRect = SkRect::Make(SkIRect::MakeXYWH(dstx, dsty, width, height));
-      ((SkiaSurface*)dest)->m_canvas->drawBitmapRectToRect(m_bitmap, &srcRect, dstRect, &paint);
-    }
+    SkImageInfo info = SkImageInfo::MakeN32Premul(width, height);
+    std::vector<uint32_t> pixels(width * height * 4);
+    m_canvas->readPixels(info, (void*)&pixels[0], 4*width, srcx, srcy);
+    ((SkiaSurface*)dest)->m_canvas->writePixels(info, (void*)&pixels[0], 4*width, dstx, dsty);
   }
 
   void scrollTo(const gfx::Rect& rc, int dx, int dy) override {
@@ -363,8 +355,9 @@ public:
     SkPaint paint;
     paint.setXfermodeMode(SkXfermode::kSrc_Mode);
 
-    m_canvas->drawBitmapRectToRect(
-      ((SkiaSurface*)src)->m_bitmap, &srcRect, dstRect, &paint);
+    m_canvas->drawBitmapRect(
+      ((SkiaSurface*)src)->m_bitmap, srcRect, dstRect, &paint,
+      SkCanvas::kStrict_SrcRectConstraint);
   }
 
   void drawRgbaSurface(const LockedSurface* src, int dstx, int dsty) override {
@@ -381,8 +374,9 @@ public:
     SkPaint paint;
     paint.setXfermodeMode(SkXfermode::kSrcOver_Mode);
 
-    m_canvas->drawBitmapRectToRect(
-      ((SkiaSurface*)src)->m_bitmap, &srcRect, dstRect, &paint);
+    m_canvas->drawBitmapRect(
+      ((SkiaSurface*)src)->m_bitmap, srcRect, dstRect, &paint,
+      SkCanvas::kStrict_SrcRectConstraint);
   }
 
   void drawColoredRgbaSurface(const LockedSurface* src, gfx::Color fg, gfx::Color bg, const gfx::Clip& clipbase) override {
@@ -407,9 +401,10 @@ public:
       SkColorFilter::CreateModeFilter(to_skia(fg), SkXfermode::kSrcIn_Mode));
     paint.setColorFilter(colorFilter);
 
-    m_canvas->drawBitmapRectToRect(
+    m_canvas->drawBitmapRect(
       ((SkiaSurface*)src)->m_bitmap,
-      &srcRect, dstRect, &paint);
+      srcRect, dstRect, &paint,
+      SkCanvas::kStrict_SrcRectConstraint);
   }
 
   void drawChar(Font* font, gfx::Color fg, gfx::Color bg, int x, int y, int chr) override {

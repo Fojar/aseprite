@@ -12,78 +12,20 @@
 
 #include "she/event.h"
 #include "she/event_queue.h"
-#include "she/system.h"
-
-@interface OSXWindowDelegate : NSObject
-{
-  she::EventQueue* queue;
-  OSXWindow* window;
-}
-- (BOOL)windowShouldClose:(id)sender;
-- (void)windowWillClose:(NSNotification *)notification;
-- (void)windowDidResize:(NSNotification*)notification;
-- (void)windowDidMiniaturize:(NSNotification*)notification;
-- (void)setEventQueue:(she::EventQueue*)aQueue;
-- (void)setOSXWindow:(OSXWindow*)aWindow;
-@end
-
-@interface OSXView : NSView
-- (void)mouseDragged:(NSEvent*)theEvent;
-@end
-
-@implementation OSXWindowDelegate
-
-- (BOOL)windowShouldClose:(id)sender
-{
-  [window closeDelegate]->notifyClose();
-  return YES;
-}
-
-- (void)windowWillClose:(NSNotification*)notification
-{
-}
-
-- (void)windowDidResize:(NSNotification*)notification
-{
-}
-
-- (void)windowDidMiniaturize:(NSNotification*)notification
-{
-}
-
-- (void)setEventQueue:(she::EventQueue*)aQueue
-{
-  queue = aQueue;
-}
-
-- (void)setOSXWindow:(OSXWindow*)aWindow
-{
-  window = aWindow;
-}
-
-@end
-
-@implementation OSXView
-
-- (void)mouseDragged:(NSEvent*)theEvent
-{
-}
-
-@end
+#include "she/osx/view.h"
+#include "she/osx/window_delegate.h"
 
 @implementation OSXWindow
 
-- (OSXWindow*)init
+- (OSXWindow*)initWithImpl:(OSXWindowImpl*)impl
 {
-  closeDelegate = nullptr;
+  m_impl = impl;
 
   NSRect rect = NSMakeRect(0, 0, 640, 480);
+  m_clientSize.w = m_restoredSize.w = rect.size.width;
+  m_clientSize.h = m_restoredSize.h = rect.size.height;
 
-  OSXWindowDelegate* windowDelegate = [[OSXWindowDelegate new] autorelease];
-  [windowDelegate setEventQueue:she::instance()->eventQueue()];
-  [windowDelegate setOSXWindow:self];
-
-  OSXView* view = [[[OSXView alloc] initWithFrame:rect] autorelease];
+  OSXView* view = [[OSXView alloc] initWithFrame:rect];
   [view setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
 
   [super initWithContentRect:rect
@@ -92,25 +34,25 @@
                      backing:NSBackingStoreBuffered
                        defer:NO];
 
-  [self setDelegate:windowDelegate];
+  [self setDelegate:[[OSXWindowDelegate alloc] initWithWindow:self]];
   [self setContentView:view];
   [self center];
   return self;
 }
 
-- (void)dealloc
+- (OSXWindowImpl*)impl
 {
-  [super dealloc];
+  return m_impl;
 }
 
-- (CloseDelegate*)closeDelegate
+- (gfx::Size)clientSize
 {
-  return closeDelegate;
+  return m_clientSize;
 }
 
-- (void)setCloseDelegate:(CloseDelegate*)aDelegate
+- (gfx::Size)restoredSize
 {
-  closeDelegate = aDelegate;
+  return m_restoredSize;
 }
 
 @end

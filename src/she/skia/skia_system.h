@@ -28,10 +28,13 @@
 
 namespace she {
 
+EventQueueImpl g_queue;
+
 class SkiaSystem : public CommonSystem {
 public:
   SkiaSystem()
-    : m_defaultDisplay(nullptr) {
+    : m_defaultDisplay(nullptr)
+    , m_gpuAcceleration(false) {
   }
 
   ~SkiaSystem() {
@@ -48,11 +51,20 @@ public:
     return Capabilities(
       int(Capabilities::MultipleDisplays) |
       int(Capabilities::CanResizeDisplay) |
-      int(Capabilities::DisplayScale));
+      int(Capabilities::DisplayScale) |
+      int(Capabilities::GpuAccelerationSwitch));
   }
 
   EventQueue* eventQueue() override {
-    return &m_queue;
+    return &g_queue;
+  }
+
+  bool gpuAcceleration() const override {
+    return m_gpuAcceleration;
+  }
+
+  void setGpuAcceleration(bool state) override {
+    m_gpuAcceleration = state;
   }
 
   Display* defaultDisplay() override {
@@ -60,7 +72,7 @@ public:
   }
 
   Display* createDisplay(int width, int height, int scale) override {
-    SkiaDisplay* display = new SkiaDisplay(&m_queue, width, height, scale);
+    SkiaDisplay* display = new SkiaDisplay(width, height, scale);
     if (!m_defaultDisplay)
       m_defaultDisplay = display;
     return display;
@@ -80,7 +92,7 @@ public:
 
   Surface* loadSurface(const char* filename) override {
     base::FileHandle fp(base::open_file_with_exception(filename, "rb"));
-    SkAutoTDelete<SkStreamAsset> stream(SkNEW_ARGS(SkFILEStream, (fp.get(), SkFILEStream::kCallerRetains_Ownership)));
+    SkAutoTDelete<SkStreamAsset> stream(new SkFILEStream(fp.get(), SkFILEStream::kCallerRetains_Ownership));
 
     SkAutoTDelete<SkImageDecoder> decoder(SkImageDecoder::Factory(stream));
     if (decoder) {
@@ -107,8 +119,12 @@ public:
 
 private:
   SkiaDisplay* m_defaultDisplay;
-  EventQueueImpl m_queue;
+  bool m_gpuAcceleration;
 };
+
+EventQueue* EventQueue::instance() {
+  return &g_queue;
+}
 
 } // namespace she
 

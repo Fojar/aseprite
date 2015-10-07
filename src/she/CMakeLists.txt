@@ -84,7 +84,7 @@ if(USE_SKIA_BACKEND)
   if(WIN32)
     find_library(SKIA_ETC1_LIBRARY libetc1 PATH "${SKIA_BUILD_OUT_DIR}/obj/gyp")
     find_library(SKIA_LIBSKKTX_LIBRARY libSkKTX PATH "${SKIA_BUILD_OUT_DIR}/obj/gyp")
-    find_library(SKIA_OPENGL32_LIBRARY opengl32)
+    find_library(SKIA_OPENGL_LIBRARY opengl32)
     find_library(SKIA_LIBEGL_LIBRARY libEGL.dll.lib PATH "${SKIA_BUILD_OUT_DIR}")
     if(SKIA_LIBEGL_LIBRARY)
       add_definitions(-DSK_ANGLE=1)
@@ -92,6 +92,7 @@ if(USE_SKIA_BACKEND)
   else()
     find_library(SKIA_ETC1_LIBRARY etc1 PATH "${SKIA_BUILD_OUT_DIR}")
     find_library(SKIA_LIBSKKTX_LIBRARY SkKTX PATH "${SKIA_BUILD_OUT_DIR}")
+    find_library(SKIA_OPENGL_LIBRARY opengl)
   endif()
 
   find_path(SKIA_CONFIG_INCLUDE_DIR SkUserConfig.h HINTS "${SKIA_DIR}/include/config")
@@ -99,24 +100,22 @@ if(USE_SKIA_BACKEND)
   find_path(SKIA_EFFECTS_INCLUDE_DIR SkBitmapSource.h HINTS "${SKIA_DIR}/include/effects")
   find_path(SKIA_GPU_INCLUDE_DIR SkGr.h HINTS "${SKIA_DIR}/include/gpu")
   find_path(SKIA_UTILS_INCLUDE_DIR SkRandom.h HINTS "${SKIA_DIR}/include/utils")
-
-  set(SKIA_ANGLE_INCLUDE_DIR "")
-  if(WIN32)
-    find_path(SKIA_ANGLE_INCLUDE_DIR angle_gl.h HINTS "${SKIA_DIR}/third_party/externals/angle2/include")
-  endif()
+  find_path(SKIA_ANGLE_INCLUDE_DIR angle_gl.h HINTS "${SKIA_DIR}/third_party/externals/angle2/include")
 
   include_directories(
     ${SKIA_CONFIG_INCLUDE_DIR}
     ${SKIA_CORE_INCLUDE_DIR}
     ${SKIA_GPU_INCLUDE_DIR}
     ${SKIA_PORTS_INCLUDE_DIR}
-    ${SKIA_UTILS_INCLUDE_DIR}
-    ${SKIA_ANGLE_INCLUDE_DIR})
+    ${SKIA_UTILS_INCLUDE_DIR})
+  if(WIN32)
+    include_directories(${SKIA_ANGLE_INCLUDE_DIR})
+  endif()
 
   set(SKIA_LIBRARIES
     ${SKIA_ETC1_LIBRARY}
     ${SKIA_LIBSKKTX_LIBRARY}
-    ${SKIA_OPENGL32_LIBRARY}
+    ${SKIA_OPENGL_LIBRARY}
     ${SKIA_LIBEGL_LIBRARY}
     ${SKIA_CORE_LIBRARY}
     ${SKIA_EFFECTS_LIBRARY}
