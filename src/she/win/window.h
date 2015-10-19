@@ -31,15 +31,15 @@ namespace she {
   template<typename T>
   class WinWindow {
   public:
-    WinWindow()
+    WinWindow(int width, int height, int scale)
       : m_clientSize(1, 1)
       , m_restoredSize(0, 0) {
       registerClass();
-      m_hwnd = createHwnd(this);
+      m_hwnd = createHwnd(this, width, height);
       m_hcursor = NULL;
       m_hasMouse = false;
       m_captureMouse = false;
-      m_scale = 1;
+      m_scale = scale;
     }
 
     void queueEvent(Event& ev) {
@@ -100,7 +100,7 @@ namespace she {
       SetCursorPos(pos.x, pos.y);
     }
 
-    void setNativeMouseCursor(NativeCursor cursor) {
+    bool setNativeMouseCursor(NativeCursor cursor) {
       HCURSOR hcursor = NULL;
 
       switch (cursor) {
@@ -150,6 +150,7 @@ namespace she {
 
       SetCursor(hcursor);
       m_hcursor = hcursor;
+      return (m_hcursor ? true: false);
     }
 
     void updateWindow(const gfx::Rect& bounds) {
@@ -484,14 +485,14 @@ namespace she {
         throw std::runtime_error("Error registering window class");
     }
 
-    static HWND createHwnd(WinWindow* self) {
+    static HWND createHwnd(WinWindow* self, int width, int height) {
       HWND hwnd = CreateWindowEx(
         WS_EX_APPWINDOW | WS_EX_ACCEPTFILES,
         SHE_WND_CLASS_NAME,
         L"",
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT,
-        CW_USEDEFAULT, CW_USEDEFAULT,
+        width, height,
         nullptr,
         nullptr,
         GetModuleHandle(nullptr),

@@ -8,30 +8,46 @@
 #define SHE_OSX_WINDOW_H_INCLUDED
 #pragma once
 
-#include <AppKit/AppKit.h>
-#include <CoreFoundation/CoreFoundation.h>
-#include <Foundation/Foundation.h>
+#include <Cocoa/Cocoa.h>
 
-#include <stdio.h>
-
+#include "gfx/point.h"
+#include "gfx/rect.h"
 #include "gfx/size.h"
+#include "she/keys.h"
+#include "she/native_cursor.h"
+
+namespace she {
+  KeyScancode cocoavk_to_scancode(UInt16 vk);
+}
 
 class OSXWindowImpl {
 public:
   virtual ~OSXWindowImpl() { }
   virtual void onClose() = 0;
+  virtual void onResize(const gfx::Size& size) = 0;
+  virtual void onDrawRect(const gfx::Rect& rect) = 0;
+  virtual void onWindowChanged() = 0;
 };
 
-@interface OSXWindow : NSWindow
-{
+@class OSXWindowDelegate;
+
+@interface OSXWindow : NSWindow {
+@private
   OSXWindowImpl* m_impl;
-  gfx::Size m_clientSize;
-  gfx::Size m_restoredSize;
+  OSXWindowDelegate* m_delegate;
+  int m_scale;
 }
-- (OSXWindow*)initWithImpl:(OSXWindowImpl*)impl;
+- (OSXWindow*)initWithImpl:(OSXWindowImpl*)impl
+                     width:(int)width
+                    height:(int)height
+                     scale:(int)scale;
 - (OSXWindowImpl*)impl;
+- (int)scale;
+- (void)setScale:(int)scale;
 - (gfx::Size)clientSize;
 - (gfx::Size)restoredSize;
+- (void)setMousePosition:(const gfx::Point&)position;
+- (BOOL)setNativeMouseCursor:(she::NativeCursor)cursor;
 @end
 
 #endif

@@ -4,10 +4,7 @@
 // This file is released under the terms of the MIT license.
 // Read LICENSE.txt for more information.
 
-#include <CoreFoundation/CoreFoundation.h>
-#include <Foundation/Foundation.h>
-#include <AppKit/AppKit.h>
-
+#include <Cocoa/Cocoa.h>
 #include <vector>
 
 #include "she/display.h"
@@ -17,8 +14,8 @@
 
 #include "base/path.h"
 
-@interface OpenSaveHelper : NSObject
-{
+@interface OpenSaveHelper : NSObject {
+@private
   NSSavePanel* panel;
   she::Display* display;
   int result;
@@ -56,13 +53,17 @@
   she::NativeCursor oldCursor = display->nativeMouseCursor();
   display->setNativeMouseCursor(she::kArrowCursor);
 
+#ifndef __MAC_10_6              // runModalForTypes is deprecated in 10.6
   if ([panel isKindOfClass:[NSOpenPanel class]]) {
     // As we're using OS X 10.4 framework, it looks like runModal
     // doesn't recognize the allowedFileTypes property. So we force it
     // using runModalForTypes: selector.
-    result = [panel runModalForTypes:[panel allowedFileTypes]];
+
+    result = [(NSOpenPanel*)panel runModalForTypes:[panel allowedFileTypes]];
   }
-  else {
+  else
+#endif
+  {
     result = [panel runModal];
   }
 
@@ -128,12 +129,12 @@ public:
     }
     else {
       panel = [NSOpenPanel openPanel];
-      [panel setAllowsMultipleSelection:NO];
+      [(NSOpenPanel*)panel setAllowsMultipleSelection:NO];
+      [(NSOpenPanel*)panel setCanChooseDirectories:NO];
     }
 
     [panel setTitle:[NSString stringWithUTF8String:m_title.c_str()]];
     [panel setCanCreateDirectories:YES];
-    [panel setCanChooseDirectories:NO];
 
     std::string defPath = base::get_file_path(m_filename);
     std::string defName = base::get_file_name(m_filename);
@@ -164,8 +165,10 @@ public:
     else
       retValue = false;
 
+#if !__has_feature(objc_arc)
     [helper release];
     [types release];
+#endif
     return retValue;
   }
 

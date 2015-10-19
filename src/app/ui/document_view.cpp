@@ -115,6 +115,7 @@ protected:
             MouseMessage mouseMsg(
               (msg->type() == kKeyDownMessage ? kMouseDownMessage: kMouseUpMessage),
               (lmb->isPressed(msg) ? kButtonLeft: kButtonRight),
+              msg->modifiers(),
               ui::get_mouse_position());
 
             sendMessage(&mouseMsg);
@@ -128,13 +129,15 @@ protected:
       return Editor::onProcessMessage(msg);
     }
     catch (const std::exception& ex) {
+      EditorState* state = getState().get();
+
       Console console;
       Console::showException(ex);
       console.printf("\nInternal details:\n"
         "- Message type: %d\n"
         "- Editor state: %s\n",
         msg->type(),
-        getState() ? typeid(*getState().get()).name(): "None");
+        state ? typeid(*state).name(): "None");
       return false;
     }
   }

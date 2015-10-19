@@ -8,9 +8,7 @@
 #include "config.h"
 #endif
 
-#include <CoreFoundation/CoreFoundation.h>
-#include <Foundation/Foundation.h>
-#include <AppKit/AppKit.h>
+#include <Cocoa/Cocoa.h>
 
 #include "she/osx/app_delegate.h"
 
@@ -21,28 +19,21 @@
 
 @implementation OSXAppDelegate
 
-- (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication*)theApplication
-{
-  return YES;
-}
-
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication*)sender
 {
   return NSTerminateNow;
 }
 
-- (void)applicationWillTerminate:(NSNotification*)aNotification
+- (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication*)app
+{
+  return YES;
+}
+
+- (void)applicationWillTerminate:(NSNotification*)notification
 {
   she::Event ev;
   ev.setType(she::Event::CloseDisplay);
   she::instance()->eventQueue()->queueEvent(ev);
-
-  she::OSXApp::instance()->joinUserThread();
-}
-
-- (void)quit:(id)sender
-{
-  [[NSApp mainWindow] performClose:self];
 }
 
 @end

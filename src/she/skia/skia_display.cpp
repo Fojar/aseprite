@@ -18,7 +18,7 @@
 namespace she {
 
 SkiaDisplay::SkiaDisplay(int width, int height, int scale)
-  : m_window(instance()->eventQueue(), this)
+  : m_window(instance()->eventQueue(), this, width, height, scale)
   , m_surface(new SkiaSurface)
   , m_customSurface(false)
   , m_nativeCursor(kArrowCursor)
@@ -122,8 +122,7 @@ NativeCursor SkiaDisplay::nativeMouseCursor()
 bool SkiaDisplay::setNativeMouseCursor(NativeCursor cursor)
 {
   m_nativeCursor = cursor;
-  m_window.setNativeMouseCursor(cursor);
-  return true;
+  return m_window.setNativeMouseCursor(cursor);
 }
 
 void SkiaDisplay::setMousePosition(const gfx::Point& position)

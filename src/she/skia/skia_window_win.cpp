@@ -23,8 +23,10 @@
 
 namespace she {
 
-SkiaWindow::SkiaWindow(EventQueue* queue, SkiaDisplay* display)
-  : m_queue(queue)
+SkiaWindow::SkiaWindow(EventQueue* queue, SkiaDisplay* display,
+                       int width, int height, int scale)
+  : WinWindow<SkiaWindow>(width, height, scale)
+  , m_queue(queue)
   , m_display(display)
   , m_backend(Backend::NONE)
 #if SK_SUPPORT_GPU
@@ -146,11 +148,11 @@ bool SkiaWindow::attachGL()
 {
   if (!m_glCtx) {
     try {
-      auto wglCtx = new GLContextSkia<GLContextWGL>(handle());
-      m_stencilBits = wglCtx->getStencilBits();
-      m_sampleCount = wglCtx->getSampleCount();
+      auto ctx = new GLContextSkia<GLContextWGL>(handle());
+      m_stencilBits = ctx->getStencilBits();
+      m_sampleCount = ctx->getSampleCount();
 
-      m_glCtx.reset(wglCtx);
+      m_glCtx.reset(ctx);
       m_grCtx.reset(GrContext::Create(kOpenGL_GrBackend,
                                       (GrBackendContext)m_glCtx->gl()));
     }
@@ -246,8 +248,10 @@ void SkiaWindow::resizeImpl(const gfx::Size& size)
     m_backend = Backend::NONE;
   }
 
+#if SK_SUPPORT_GPU
   if (m_glCtx)
     createRenderTarget(size);
+#endif
 
   m_display->resize(size);
 }

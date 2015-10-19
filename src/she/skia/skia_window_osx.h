@@ -22,7 +22,8 @@ class SkiaWindow {
 public:
   enum class Backend { NONE, GL };
 
-  SkiaWindow(EventQueue* queue, SkiaDisplay* display);
+  SkiaWindow(EventQueue* queue, SkiaDisplay* display,
+             int width, int height, int scale);
   ~SkiaWindow();
 
   int scale() const;
@@ -36,11 +37,13 @@ public:
   void captureMouse();
   void releaseMouse();
   void setMousePosition(const gfx::Point& position);
-  void setNativeMouseCursor(NativeCursor cursor);
+  bool setNativeMouseCursor(NativeCursor cursor);
   void updateWindow(const gfx::Rect& bounds);
   void* handle();
 
 private:
+  void destroyImpl();
+
   class Impl;
   Impl* m_impl;
 

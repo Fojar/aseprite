@@ -1,5 +1,5 @@
 // Aseprite UI Library
-// Copyright (C) 2001-2013  David Capello
+// Copyright (C) 2001-2013, 2015  David Capello
 //
 // This file is released under the terms of the MIT license.
 // Read LICENSE.txt for more information.
@@ -28,7 +28,8 @@ namespace ui {
   public:
     typedef WidgetsList::iterator& recipients_iterator;
 
-    Message(MessageType type);
+    Message(MessageType type,
+            KeyModifiers modifiers = kKeyUninitializedModifier);
     virtual ~Message();
 
     MessageType type() const { return m_type; }
@@ -36,7 +37,7 @@ namespace ui {
     bool hasRecipients() const { return !m_recipients.empty(); }
     bool isUsed() const { return m_used; }
     void markAsUsed() { m_used = true; }
-    KeyModifiers keyModifiers() const { return m_modifiers; }
+    KeyModifiers modifiers() const { return m_modifiers; }
     bool shiftPressed() const { return (m_modifiers & kKeyShiftModifier) == kKeyShiftModifier; }
     bool ctrlPressed() const { return (m_modifiers & kKeyCtrlModifier) == kKeyCtrlModifier; }
     bool altPressed() const { return (m_modifiers & kKeyAltModifier) == kKeyAltModifier; }
@@ -59,10 +60,13 @@ namespace ui {
     KeyModifiers m_modifiers; // Key modifiers pressed when message was created
   };
 
-  class KeyMessage : public Message
-  {
+  class KeyMessage : public Message {
   public:
-    KeyMessage(MessageType type, KeyScancode scancode, int unicodeChar, int repeat);
+    KeyMessage(MessageType type,
+               KeyScancode scancode,
+               KeyModifiers modifiers,
+               int unicodeChar,
+               int repeat);
 
     KeyScancode scancode() const { return m_scancode; }
     int unicodeChar() const { return m_unicodeChar; }
@@ -80,8 +84,7 @@ namespace ui {
     bool m_propagate_to_parent : 1;
   };
 
-  class PaintMessage : public Message
-  {
+  class PaintMessage : public Message {
   public:
     PaintMessage(int count, const gfx::Rect& rect)
       : Message(kPaintMessage), m_count(count), m_rect(rect) {
@@ -95,16 +98,19 @@ namespace ui {
     gfx::Rect m_rect;        // Area to draw
   };
 
-  class MouseMessage : public Message
-  {
+  class MouseMessage : public Message {
   public:
-    MouseMessage(MessageType type, MouseButtons buttons,
-      const gfx::Point& pos,
-      const gfx::Point& wheelDelta = gfx::Point(0, 0))
-      : Message(type),
+    MouseMessage(MessageType type,
+                 MouseButtons buttons,
+                 KeyModifiers modifiers,
+                 const gfx::Point& pos,
+                 const gfx::Point& wheelDelta = gfx::Point(0, 0),
+                 bool preciseWheel = false)
+      : Message(type, modifiers),
         m_buttons(buttons),
         m_pos(pos),
-        m_wheelDelta(wheelDelta) {
+        m_wheelDelta(wheelDelta),
+        m_preciseWheel(preciseWheel) {
     }
 
     MouseButtons buttons() const { return m_buttons; }
@@ -112,6 +118,7 @@ namespace ui {
     bool right() const { return (m_buttons & kButtonRight) == kButtonRight; }
     bool middle() const { return (m_buttons & kButtonMiddle) == kButtonMiddle; }
     gfx::Point wheelDelta() const { return m_wheelDelta; }
+    bool preciseWheel() const { return m_preciseWheel; }
 
     const gfx::Point& position() const { return m_pos; }
 
@@ -119,10 +126,10 @@ namespace ui {
     MouseButtons m_buttons;     // Pressed buttons
     gfx::Point m_pos;           // Mouse position
     gfx::Point m_wheelDelta;    // Wheel axis variation
+    bool m_preciseWheel;
   };
 
-  class TimerMessage : public Message
-  {
+  class TimerMessage : public Message {
   public:
     TimerMessage(int count, Timer* timer)
       : Message(kTimerMessage), m_count(count), m_timer(timer) {
@@ -136,8 +143,7 @@ namespace ui {
     Timer* m_timer;                 // Timer handle
   };
 
-  class DropFilesMessage : public Message
-  {
+  class DropFilesMessage : public Message {
   public:
     typedef std::vector<std::string> Files;
 
