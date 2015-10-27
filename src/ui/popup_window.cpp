@@ -19,9 +19,12 @@ namespace ui {
 
 using namespace gfx;
 
-PopupWindow::PopupWindow(const std::string& text, ClickBehavior clickBehavior)
+PopupWindow::PopupWindow(const std::string& text,
+                         ClickBehavior clickBehavior,
+                         EnterBehavior enterBehavior)
   : Window(WithTitleBar, text)
   , m_clickBehavior(clickBehavior)
+  , m_enterBehavior(enterBehavior)
   , m_filtering(false)
 {
   setSizeable(false);
@@ -83,7 +86,7 @@ bool PopupWindow::onProcessMessage(Message* msg)
 
     case kMouseLeaveMessage:
       if (m_hotRegion.isEmpty() && !isMoveable())
-        closeWindow(NULL);
+        closeWindow(nullptr);
       break;
 
     case kKeyDownMessage:
@@ -91,17 +94,15 @@ bool PopupWindow::onProcessMessage(Message* msg)
         KeyMessage* keymsg = static_cast<KeyMessage*>(msg);
         KeyScancode scancode = keymsg->scancode();
 
-        if (scancode == kKeyEsc ||
-            scancode == kKeyEnter ||
-            scancode == kKeyEnterPad) {
-          closeWindow(NULL);
-        }
+        if (scancode == kKeyEsc)
+          closeWindow(nullptr);
 
-        // If we are filtering messages we don't propagate key-events
-        // to other widgets. As we're a popup window and we're
-        // filtering messages, the user shouldn't be able to start
-        // other actions pressing keyboard shortcuts.
-        return false;
+        if (m_enterBehavior == kCloseOnEnter &&
+            (scancode == kKeyEnter ||
+             scancode == kKeyEnterPad)) {
+          closeWindow(this);
+          return true;
+        }
       }
       break;
 
