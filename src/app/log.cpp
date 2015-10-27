@@ -76,3 +76,23 @@ void verbose_log(const char* format, ...)
   }
 
 }
+
+#include <Windows.h>
+void PRINT_TO_VS_OUTPUT_WINDOW(const char* format, ...)
+{
+  const int BUFFER_SIZE = 1000;
+  char buffer[BUFFER_SIZE];
+  va_list arg;
+  va_start(arg, format);
+  _vsnprintf_s(buffer, _countof(buffer), _TRUNCATE, format, arg);
+  va_end(arg);
+
+  // Convert to a wchar_t*
+  size_t origsize = strlen(buffer) + 1;
+  const size_t newsize = BUFFER_SIZE;
+  size_t convertedChars = 0;
+  wchar_t wcstring[newsize];
+  mbstowcs_s(&convertedChars, wcstring, origsize, buffer, _TRUNCATE);
+
+  OutputDebugString(wcstring);
+}
