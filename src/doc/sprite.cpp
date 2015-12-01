@@ -18,6 +18,7 @@
 #include "doc/frame_tag.h"
 #include "doc/image_impl.h"
 #include "doc/layer.h"
+#include "doc/layers_range.h"
 #include "doc/palette.h"
 #include "doc/primitives.h"
 #include "doc/remap.h"
@@ -346,14 +347,22 @@ void Sprite::deletePalette(frame_t frame)
 
 RgbMap* Sprite::rgbMap(frame_t frame) const
 {
-  int mask_color = (backgroundLayer() ? -1: transparentColor());
+  return rgbMap(frame, backgroundLayer() ? RgbMapFor::OpaqueLayer:
+                                           RgbMapFor::TransparentLayer);
+}
+
+RgbMap* Sprite::rgbMap(frame_t frame, RgbMapFor forLayer) const
+{
+  int maskIndex = (forLayer == RgbMapFor::OpaqueLayer ?
+                   -1: transparentColor());
 
   if (m_rgbMap == NULL) {
     m_rgbMap = new RgbMap();
-    m_rgbMap->regenerate(palette(frame), mask_color);
+    m_rgbMap->regenerate(palette(frame), maskIndex);
   }
-  else if (!m_rgbMap->match(palette(frame))) {
-    m_rgbMap->regenerate(palette(frame), mask_color);
+  else if (!m_rgbMap->match(palette(frame)) ||
+           m_rgbMap->maskIndex() != maskIndex) {
+    m_rgbMap->regenerate(palette(frame), maskIndex);
   }
 
   return m_rgbMap;
@@ -524,7 +533,12 @@ void Sprite::pickCels(int x, int y, frame_t frame, int opacityThreshold, CelList
 }
 
 //////////////////////////////////////////////////////////////////////
-// CelsRange
+// Iterators
+
+LayersRange Sprite::layers() const
+{
+  return LayersRange(this, LayerIndex(0), LayerIndex(countLayers()-1));
+}
 
 CelsRange Sprite::cels() const
 {

@@ -556,7 +556,7 @@ void Tabs::selectTabInternal(TabPtr& tab)
     invalidate();
   }
 
-  if (m_delegate)
+  if (m_delegate && tab)
     m_delegate->onSelectTab(this, tab->view);
 }
 
@@ -938,7 +938,10 @@ void Tabs::createFloatingOverlay(Tab* tab)
     for (int y=0; y<surface->height(); ++y)
       for (int x=0; x<surface->width(); ++x) {
         gfx::Color c = lock->getPixel(x, y);
-        c = (c != gfx::rgba(255, 0, 255) ? gfx::seta(c, 255): gfx::ColorNone);
+        c = (c != gfx::rgba(255, 0, 255, 0) &&
+             c != gfx::rgba(255, 0, 255, 255) ?
+             gfx::rgba(gfx::getr(c), gfx::getg(c), gfx::getb(c), 255):
+             gfx::ColorNone);
         lock->putPixel(c, x, y);
       }
   }

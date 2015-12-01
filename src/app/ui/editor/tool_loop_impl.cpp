@@ -65,12 +65,13 @@ protected:
   Sprite* m_sprite;
   Layer* m_layer;
   frame_t m_frame;
+  RgbMap* m_rgbMap;
   DocumentPreferences& m_docPref;
   ToolPreferences& m_toolPref;
   int m_opacity;
   int m_tolerance;
   bool m_contiguous;
-  gfx::Point m_offset;
+  gfx::Point m_celOrigin;
   gfx::Point m_speed;
   tools::ToolLoop::Button m_button;
   base::UniquePtr<tools::Ink> m_ink;
@@ -101,6 +102,7 @@ public:
     , m_sprite(editor->sprite())
     , m_layer(editor->layer())
     , m_frame(editor->frame())
+    , m_rgbMap(nullptr)
     , m_docPref(Preferences::instance().document(m_document))
     , m_toolPref(Preferences::instance().tool(m_tool))
     , m_opacity(m_toolPref.opacity())
@@ -141,25 +143,21 @@ public:
     }
 
     // Symmetry mode
-    switch (m_docPref.symmetry.mode()) {
+    if (Preferences::instance().symmetryMode.enabled()) {
+      switch (m_docPref.symmetry.mode()) {
 
-      case app::gen::SymmetryMode::NONE:
-        ASSERT(m_symmetry == nullptr);
-        break;
+        case app::gen::SymmetryMode::NONE:
+          ASSERT(m_symmetry == nullptr);
+          break;
 
-      case app::gen::SymmetryMode::HORIZONTAL:
-        if (m_docPref.symmetry.xAxis() == 0)
-          m_docPref.symmetry.xAxis(m_sprite->width()/2);
+        case app::gen::SymmetryMode::HORIZONTAL:
+          m_symmetry.reset(new app::tools::HorizontalSymmetry(m_docPref.symmetry.xAxis()));
+          break;
 
-        m_symmetry.reset(new app::tools::HorizontalSymmetry(m_docPref.symmetry.xAxis()));
-        break;
-
-      case app::gen::SymmetryMode::VERTICAL:
-        if (m_docPref.symmetry.yAxis() == 0)
-          m_docPref.symmetry.yAxis(m_sprite->height()/2);
-
-        m_symmetry.reset(new app::tools::VerticalSymmetry(m_docPref.symmetry.yAxis()));
-        break;
+        case app::gen::SymmetryMode::VERTICAL:
+          m_symmetry.reset(new app::tools::VerticalSymmetry(m_docPref.symmetry.yAxis()));
+          break;
+      }
     }
 
     // Ignore opacity for these inks
@@ -171,7 +169,7 @@ public:
 
     if (m_toolPref.ink() == tools::InkType::SHADING) {
       m_shadingRemap.reset(
-        App::instance()->getMainWindow()->getContextBar()->createShadesRemap(
+        App::instance()->getMainWindow()->getContextBar()->createShadeRemap(
           button == tools::ToolLoop::Left));
     }
   }
@@ -183,7 +181,17 @@ public:
   Sprite* sprite() override { return m_sprite; }
   Layer* getLayer() override { return m_layer; }
   frame_t getFrame() override { return m_frame; }
-  RgbMap* getRgbMap() override { return m_sprite->rgbMap(m_frame); }
+  RgbMap* getRgbMap() override {
+    if (!m_rgbMap) {
+      Sprite::RgbMapFor forLayer =
+        ((m_layer->isBackground() ||
+          m_sprite->pixelFormat() == IMAGE_RGB) ?
+         Sprite::RgbMapFor::OpaqueLayer:
+         Sprite::RgbMapFor::TransparentLayer);
+      m_rgbMap = m_sprite->rgbMap(m_frame, forLayer);
+    }
+    return m_rgbMap;
+  }
   const render::Zoom& zoom() override { return m_editor->zoom(); }
   ToolLoop::Button getMouseButton() override { return m_button; }
   doc::color_t getFgColor() override { return m_fgColor; }
@@ -211,7 +219,7 @@ public:
     return false;
   }
   gfx::Rect getGridBounds() override { return m_docPref.grid.bounds(); }
-  gfx::Point getOffset() override { return m_offset; }
+  gfx::Point getCelOrigin() override { return m_celOrigin; }
   void setSpeed(const gfx::Point& speed) override { m_speed = speed; }
   gfx::Point getSpeed() override { return m_speed; }
   tools::Ink* getInk() override { return m_ink; }
@@ -321,16 +329,11 @@ public:
       m_transaction.execute(new cmd::SetMask(m_document, &emptyMask));
     }
 
-    int x1 = m_expandCelCanvas.getCel()->x();
-    int y1 = m_expandCelCanvas.getCel()->y();
-
+    m_celOrigin = m_expandCelCanvas.getCel()->position();
     m_mask = m_document->mask();
-    m_maskOrigin = (!m_mask->isEmpty() ? gfx::Point(m_mask->bounds().x-x1,
-                                                    m_mask->bounds().y-y1):
+    m_maskOrigin = (!m_mask->isEmpty() ? gfx::Point(m_mask->bounds().x-m_celOrigin.x,
+                                                    m_mask->bounds().y-m_celOrigin.y):
                                          gfx::Point(0, 0));
-
-    m_offset.x = -x1;
-    m_offset.y = -y1;
   }
 
   // IToolLoop interface
@@ -489,12 +492,12 @@ public:
     const app::Color& fgColor,
     const app::Color& bgColor,
     Image* image,
-    const gfx::Point& offset)
+    const gfx::Point& celOrigin)
     : ToolLoopBase(editor, tool, ink, document,
                    tools::ToolLoop::Left, fgColor, bgColor)
     , m_image(image)
   {
-    m_offset = offset;
+    m_celOrigin = celOrigin;
 
     // Avoid preview for spray and flood fill like tools
     if (m_pointShape->isSpray()) {
@@ -533,7 +536,7 @@ public:
 
 tools::ToolLoop* create_tool_loop_preview(
   Editor* editor, Image* image,
-  const gfx::Point& offset)
+  const gfx::Point& celOrigin)
 {
   tools::Tool* current_tool = editor->getCurrentEditorTool();
   tools::Ink* current_ink = editor->getCurrentEditorInk();
@@ -561,7 +564,7 @@ tools::ToolLoop* create_tool_loop_preview(
       current_tool,
       current_ink,
       editor->document(),
-      fg, bg, image, offset);
+      fg, bg, image, celOrigin);
   }
   catch (const std::exception&) {
     return nullptr;

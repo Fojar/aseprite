@@ -227,6 +227,7 @@ add_library(app-lib
   commands/cmd_palette_size.cpp
   commands/cmd_paste.cpp
   commands/cmd_paste_text.cpp
+  commands/cmd_pixel_perfect_mode.cpp
   commands/cmd_play_animation.cpp
   commands/cmd_refresh.cpp
   commands/cmd_remove_frame.cpp
@@ -242,9 +243,11 @@ add_library(app-lib
   commands/cmd_save_palette.cpp
   commands/cmd_scroll.cpp
   commands/cmd_set_color_selector.cpp
+  commands/cmd_set_ink_type.cpp
   commands/cmd_set_loop_section.cpp
   commands/cmd_set_palette.cpp
   commands/cmd_set_palette_entry_size.cpp
+  commands/cmd_set_same_ink.cpp
   commands/cmd_sprite_properties.cpp
   commands/cmd_sprite_size.cpp
   commands/cmd_switch_colors.cpp
@@ -310,9 +313,11 @@ add_library(app-lib
   resource_finder.cpp
   scripting/app_scripting.cpp
   send_crash.cpp
+  shade.cpp
   shell.cpp
   snap_to_grid.cpp
   thumbnail_generator.cpp
+  tools/ink_type.cpp
   tools/intertwine.cpp
   tools/pick_ink.cpp
   tools/point_shape.cpp
@@ -344,6 +349,7 @@ add_library(app-lib
   ui/editor/editor_view.cpp
   ui/editor/moving_cel_state.cpp
   ui/editor/moving_pixels_state.cpp
+  ui/editor/moving_symmetry_state.cpp
   ui/editor/navigate_state.cpp
   ui/editor/pivot_helpers.cpp
   ui/editor/pixels_movement.cpp
@@ -361,6 +367,7 @@ add_library(app-lib
   ui/frame_tag_window.cpp
   ui/hex_color_entry.cpp
   ui/home_view.cpp
+  ui/icon_button.cpp
   ui/input_chain.cpp
   ui/keyboard_shortcuts.cpp
   ui/main_menu_bar.cpp
@@ -374,6 +381,7 @@ add_library(app-lib
   ui/preview_editor.cpp
   ui/recent_listbox.cpp
   ui/resources_listbox.cpp
+  ui/search_entry.cpp
   ui/select_accelerator.cpp
   ui/skin/button_icon_impl.cpp
   ui/skin/skin_part.cpp

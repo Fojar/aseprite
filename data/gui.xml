@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Aseprite -->
 <!-- Copyright (C) 2001-2015 by David Capello -->
-<gui version="1.1.1-dev">
+<gui version="1.1.2-dev">
   <!-- Keyboard shortcuts -->
   <keyboard version="1">
 
@@ -211,10 +211,10 @@
         <param name="action" value="out" />
       </key>
       <!-- For English keyboard -->
-      <key command="Zoom" shortcut="Ctrl+=">
+      <key command="Zoom" shortcut="Ctrl+=" mac="Cmd+=">
         <param name="action" value="in" />
       </key>
-      <key command="Zoom" shortcut="Ctrl+Shift+=">
+      <key command="Zoom" shortcut="Ctrl+Shift+=" mac="Cmd+Shift+=">
         <param name="action" value="in" />
       </key>
 
@@ -365,6 +365,15 @@
 
       <key command="NewBrush" shortcut="Ctrl+B" mac="Cmd+B" />
       <key command="NewSpriteFromSelection" shortcut="Ctrl+Alt+N" mac="Cmd+Alt+N" />
+
+      <!-- Commands not associated to menu items and without shortcuts by default -->
+      <key command="PixelPerfectMode" />
+      <key command="SetInkType"><param name="type" value="simple" /></key>
+      <key command="SetInkType"><param name="type" value="alpha-compositing" /></key>
+      <key command="SetInkType"><param name="type" value="copy-color" /></key>
+      <key command="SetInkType"><param name="type" value="lock-alpha" /></key>
+      <key command="SetInkType"><param name="type" value="shading" /></key>
+      <key command="SetSameInk" />
     </commands>
 
     <!-- Keyboard shortcuts to select tools -->
@@ -836,6 +845,26 @@
       </item>
       <separator />
       <item command="ColorQuantization" text="Create Palette from Current Sprite" />
+    </menu>
+
+    <menu id="ink_popup">
+      <item command="SetInkType" text="Simple Ink">
+	<param name="type" value="simple" />
+      </item>
+      <item command="SetInkType" text="Alpha Compositing">
+	<param name="type" value="alpha-compositing" />
+      </item>
+      <item command="SetInkType" text="Copy Alpha+Color">
+	<param name="type" value="copy-color" />
+      </item>
+      <item command="SetInkType" text="Lock Alpha">
+	<param name="type" value="lock-alpha" />
+      </item>
+      <item command="SetInkType" text="Shading">
+	<param name="type" value="shading" />
+      </item>
+      <separator />
+      <item command="SetSameInk" text="Same in all Tools" />
     </menu>
 
   </menus>

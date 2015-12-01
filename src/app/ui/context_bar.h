@@ -10,6 +10,7 @@
 #pragma once
 
 #include "app/pref/preferences.h"
+#include "app/tools/ink_type.h"
 #include "app/tools/selection_mode.h"
 #include "app/ui/context_bar_observer.h"
 #include "base/connection.h"
@@ -70,7 +71,10 @@ namespace app {
     static doc::BrushRef createBrushFromPreferences(
       ToolPreferences::Brush* brushPref = nullptr);
 
-    doc::Remap* createShadesRemap(bool left);
+    doc::Remap* createShadeRemap(bool left);
+    void reverseShadeColors();
+
+    void setInkType(tools::InkType type);
 
     // Signals
     Signal0<void> BrushChange;
@@ -78,6 +82,7 @@ namespace app {
   protected:
     void onPreferredSize(ui::PreferredSizeEvent& ev) override;
     void onToolSetOpacity(const int& newOpacity);
+    void onToolSetFreehandAlgorithm();
 
   private:
     void onBrushSizeChange();
@@ -156,6 +161,7 @@ namespace app {
     ScopedConnection m_sizeConn;
     ScopedConnection m_angleConn;
     ScopedConnection m_opacityConn;
+    ScopedConnection m_freehandAlgoConn;
   };
 
 } // namespace app

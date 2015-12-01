@@ -23,6 +23,7 @@
 #include "app/modules/gui.h"
 #include "app/modules/palettes.h"
 #include "app/pref/preferences.h"
+#include "app/pref/preferences.h"
 #include "app/tools/ink.h"
 #include "app/tools/tool.h"
 #include "app/tools/tool_box.h"
@@ -633,7 +634,9 @@ void Editor::drawSpriteUnclippedRect(ui::Graphics* g, const gfx::Rect& _rc)
   }
 
   // Symmetry mode
-  {
+  if (isActive() &&
+      (m_flags & Editor::kShowSymmetryLine) &&
+      Preferences::instance().symmetryMode.enabled()) {
     switch (docPref.symmetry.mode()) {
       case app::gen::SymmetryMode::NONE:
         // Do nothing
@@ -643,7 +646,7 @@ void Editor::drawSpriteUnclippedRect(ui::Graphics* g, const gfx::Rect& _rc)
         if (x > 0) {
           gfx::Color color = color_utils::color_for_ui(docPref.grid.color());
           g->drawVLine(color,
-                       enclosingRect.x + m_zoom.apply(x),
+                       spriteRect.x + m_zoom.apply(x),
                        enclosingRect.y,
                        enclosingRect.h);
         }
@@ -655,7 +658,7 @@ void Editor::drawSpriteUnclippedRect(ui::Graphics* g, const gfx::Rect& _rc)
           gfx::Color color = color_utils::color_for_ui(docPref.grid.color());
           g->drawHLine(color,
                        enclosingRect.x,
-                       enclosingRect.y + m_zoom.apply(y),
+                       spriteRect.y + m_zoom.apply(y),
                        enclosingRect.w);
         }
         break;
@@ -897,8 +900,10 @@ gfx::Point Editor::autoScroll(MouseMessage* msg, AutoScroll dir, bool blitValidR
 bool Editor::isCurrentToolAffectedByRightClickMode()
 {
   tools::Tool* tool = App::instance()->activeTool();
+  bool shadingMode = (Preferences::instance().tool(tool).ink() == tools::InkType::SHADING);
   return
-    (tool->getInk(0)->isPaint() || tool->getInk(0)->isEffect()) &&
+    ((tool->getInk(0)->isPaint() && !shadingMode) ||
+     (tool->getInk(0)->isEffect())) &&
     (!tool->getInk(0)->isEraser());
 }
 
@@ -909,7 +914,8 @@ tools::Tool* Editor::getCurrentEditorTool()
 
   tools::Tool* tool = App::instance()->activeTool();
 
-  if (m_secondaryButton && isCurrentToolAffectedByRightClickMode()) {
+  if (m_secondaryButton &&
+      isCurrentToolAffectedByRightClickMode()) {
     tools::ToolBox* toolbox = App::instance()->getToolBox();
 
     switch (Preferences::instance().editor.rightClickMode()) {
@@ -1494,7 +1500,20 @@ void Editor::setZoomAndCenterInMouse(const Zoom& zoom,
 void Editor::pasteImage(const Image* image, const Mask* mask)
 {
   ASSERT(image);
-  ASSERT(mask);
+
+  base::UniquePtr<Mask> temp_mask;
+  if (!mask) {
+    gfx::Rect visibleBounds = getVisibleSpriteBounds();
+    gfx::Rect imageBounds = image->bounds();
+
+    temp_mask.reset(new Mask);
+    temp_mask->replace(
+      gfx::Rect(visibleBounds.x + visibleBounds.w/2 - imageBounds.w/2,
+                visibleBounds.y + visibleBounds.h/2 - imageBounds.h/2,
+                imageBounds.w, imageBounds.h));
+
+    mask = temp_mask.get();
+  }
 
   // Change to a selection tool: it's necessary for PixelsMovement
   // which will use the extra cel for transformation preview, and is

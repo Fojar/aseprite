@@ -14,16 +14,19 @@
 #include "app/console.h"
 #include "app/context.h"
 #include "app/file_selector.h"
+#include "app/modules/editors.h"
 #include "app/pref/preferences.h"
 #include "app/ui/drop_down_button.h"
+#include "app/ui/editor/editor.h"
 #include "app/ui/font_popup.h"
-#include "app/util/clipboard.h"
 #include "app/util/freetype_utils.h"
 #include "base/bind.h"
 #include "base/path.h"
 #include "base/string.h"
 #include "base/unique_ptr.h"
 #include "doc/image.h"
+#include "doc/image_ref.h"
+#include "render/quantization.h"
 
 #include "paste_text.xml.h"
 
@@ -138,6 +141,10 @@ private:
 
 void PasteTextCommand::onExecute(Context* ctx)
 {
+  Editor* editor = current_editor;
+  if (editor == NULL)
+    return;
+
   Preferences& pref = Preferences::instance();
   PasteTextWindow window(pref.textTool.fontFace(),
                          pref.textTool.fontSize(),
@@ -165,10 +172,19 @@ void PasteTextCommand::onExecute(Context* ctx)
                                    appColor.getBlue(),
                                    appColor.getAlpha());
 
-    doc::Image* image = render_text(faceName, size, text, color);
+    doc::ImageRef image(render_text(faceName, size, text, color));
     if (image) {
-      clipboard::copy_image(image, nullptr, nullptr);
-      clipboard::paste();
+      Sprite* sprite = editor->sprite();
+      if (image->pixelFormat() != sprite->pixelFormat()) {
+        RgbMap* rgbmap = sprite->rgbMap(editor->frame());
+        image.reset(
+          render::convert_pixel_format(
+            image.get(), NULL, sprite->pixelFormat(),
+            DitheringMethod::NONE, rgbmap, sprite->palette(editor->frame()),
+            false, 0));
+      }
+
+      editor->pasteImage(image.get());
     }
   }
   catch (const std::exception& ex) {

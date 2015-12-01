@@ -12,12 +12,16 @@
 #include "app/ui/context_bar.h"
 
 #include "app/app.h"
+#include "app/app_menus.h"
+#include "app/color_utils.h"
 #include "app/commands/commands.h"
 #include "app/document.h"
+#include "app/ini_file.h"
 #include "app/modules/gfx.h"
 #include "app/modules/gui.h"
 #include "app/modules/palettes.h"
 #include "app/pref/preferences.h"
+#include "app/shade.h"
 #include "app/tools/controller.h"
 #include "app/tools/ink.h"
 #include "app/tools/ink_type.h"
@@ -28,10 +32,13 @@
 #include "app/ui/brush_popup.h"
 #include "app/ui/button_set.h"
 #include "app/ui/color_button.h"
+#include "app/ui/icon_button.h"
+#include "app/ui/skin/button_icon_impl.h"
 #include "app/ui/skin/skin_theme.h"
 #include "app/ui/skin/style.h"
 #include "app/ui_context.h"
 #include "base/bind.h"
+#include "base/connection.h"
 #include "base/scoped_value.h"
 #include "base/unique_ptr.h"
 #include "doc/brush.h"
@@ -51,6 +58,7 @@
 #include "ui/paint_event.h"
 #include "ui/popup_window.h"
 #include "ui/preferred_size_event.h"
+#include "ui/system.h"
 #include "ui/theme.h"
 #include "ui/tooltips.h"
 
@@ -334,6 +342,21 @@ public:
   }
 
   void setInkType(InkType inkType) {
+    Preferences& pref = Preferences::instance();
+
+    if (pref.shared.shareInk()) {
+      for (Tool* tool : *App::instance()->getToolBox())
+        pref.tool(tool).ink(inkType);
+    }
+    else {
+      Tool* tool = App::instance()->activeTool();
+      pref.tool(tool).ink(inkType);
+    }
+
+    m_owner->updateForCurrentTool();
+  }
+
+  void setInkTypeIcon(InkType inkType) {
     SkinTheme* theme = SkinTheme::instance();
     SkinPartPtr part = theme->parts.inkSimple();
 
@@ -354,193 +377,419 @@ protected:
 
     gfx::Rect bounds = getBounds();
 
-    Menu menu;
-    MenuItem
-      simple("Simple Ink"),
-      alphacompo("Alpha Compositing"),
-      copycolor("Copy Color+Alpha"),
-      lockalpha("Lock Alpha"),
-      shading("Shading"),
-      alltools("Same in all Tools");
-    menu.addChild(&simple);
-    menu.addChild(&alphacompo);
-    menu.addChild(&copycolor);
-    menu.addChild(&lockalpha);
-    menu.addChild(&shading);
-    menu.addChild(new MenuSeparator);
-    menu.addChild(&alltools);
-
-    Tool* tool = App::instance()->activeTool();
-    switch (Preferences::instance().tool(tool).ink()) {
-      case tools::InkType::SIMPLE: simple.setSelected(true); break;
-      case tools::InkType::ALPHA_COMPOSITING: alphacompo.setSelected(true); break;
-      case tools::InkType::COPY_COLOR: copycolor.setSelected(true); break;
-      case tools::InkType::LOCK_ALPHA: lockalpha.setSelected(true); break;
-      case tools::InkType::SHADING: shading.setSelected(true); break;
-    }
-    alltools.setSelected(Preferences::instance().shared.shareInk());
-
-    simple.Click.connect(Bind<void>(&InkTypeField::selectInk, this, InkType::SIMPLE));
-    alphacompo.Click.connect(Bind<void>(&InkTypeField::selectInk, this, InkType::ALPHA_COMPOSITING));
-    copycolor.Click.connect(Bind<void>(&InkTypeField::selectInk, this, InkType::COPY_COLOR));
-    lockalpha.Click.connect(Bind<void>(&InkTypeField::selectInk, this, InkType::LOCK_ALPHA));
-    shading.Click.connect(Bind<void>(&InkTypeField::selectInk, this, InkType::SHADING));
-    alltools.Click.connect(Bind<void>(&InkTypeField::onSameInAllTools, this));
-
-    menu.showPopup(gfx::Point(bounds.x, bounds.y+bounds.h));
+    AppMenus::instance()
+      ->getInkPopupMenu()
+      ->showPopup(gfx::Point(bounds.x, bounds.y+bounds.h));
 
     deselectItems();
-  }
-
-  void selectInk(InkType inkType) {
-    Preferences& pref = Preferences::instance();
-
-    if (pref.shared.shareInk()) {
-      for (Tool* tool : *App::instance()->getToolBox())
-        pref.tool(tool).ink(inkType);
-    }
-    else {
-      Tool* tool = App::instance()->activeTool();
-      pref.tool(tool).ink(inkType);
-    }
-
-    m_owner->updateForCurrentTool();
-  }
-
-  void onSameInAllTools() {
-    Preferences& pref = Preferences::instance();
-    bool newState = !pref.shared.shareInk();
-    pref.shared.shareInk(newState);
-
-    if (newState) {
-      Tool* activeTool = App::instance()->activeTool();
-      InkType inkType = pref.tool(activeTool).ink();
-      int opacity = pref.tool(activeTool).opacity();
-
-      for (Tool* tool : *App::instance()->getToolBox()) {
-        if (tool != activeTool) {
-          pref.tool(tool).ink(inkType);
-          pref.tool(tool).opacity(opacity);
-        }
-      }
-    }
   }
 
   ContextBar* m_owner;
 };
 
-class ContextBar::InkShadesField : public Widget {
-  typedef std::vector<app::Color> Colors;
-public:
+class ContextBar::InkShadesField : public HBox {
 
-  InkShadesField() : Widget(kGenericWidget) {
-    setText("Select colors in the palette");
-  }
+  class ShadeWidget : public Widget {
+  public:
+    enum ClickType { DragAndDrop, Select };
 
-  doc::Remap* createShadesRemap(bool left) {
-    base::UniquePtr<doc::Remap> remap;
-    Colors colors = getColors();
+    Signal0<void> Click;
 
-    if (colors.size() > 0) {
-      remap.reset(new doc::Remap(get_current_palette()->size()));
+    ShadeWidget(const Shade& colors, ClickType click)
+      : Widget(kGenericWidget)
+      , m_click(click)
+      , m_shade(colors)
+      , m_hotIndex(-1)
+      , m_dragIndex(-1)
+      , m_boxSize(12) {
+      setText("Select colors in the palette");
+    }
 
-      for (int i=0; i<remap->size(); ++i)
-        remap->map(i, i);
+    void reverseShadeColors() {
+      std::reverse(m_shade.begin(), m_shade.end());
+      invalidate();
+    }
 
-      if (left) {
-        for (int i=1; i<int(colors.size()); ++i)
-          remap->map(colors[i].getIndex(), colors[i-1].getIndex());
+    doc::Remap* createShadeRemap(bool left) {
+      base::UniquePtr<doc::Remap> remap;
+      Shade colors = getShade();
+
+      if (colors.size() > 0) {
+        remap.reset(new doc::Remap(get_current_palette()->size()));
+
+        for (int i=0; i<remap->size(); ++i)
+          remap->map(i, i);
+
+        if (left) {
+          for (int i=1; i<int(colors.size()); ++i)
+            remap->map(colors[i].getIndex(), colors[i-1].getIndex());
+        }
+        else {
+          for (int i=0; i<int(colors.size())-1; ++i)
+            remap->map(colors[i].getIndex(), colors[i+1].getIndex());
+        }
       }
+
+      return remap.release();
+    }
+
+    int size() const {
+      int colors = 0;
+      for (const auto& color : m_shade) {
+        if ((color.getIndex() >= 0 &&
+             color.getIndex() < get_current_palette()->size()) ||
+            (m_click == Select)) {
+          ++colors;
+        }
+      }
+      return colors;
+    }
+
+    Shade getShade() const {
+      Shade colors;
+      for (const auto& color : m_shade) {
+        if ((color.getIndex() >= 0 &&
+             color.getIndex() < get_current_palette()->size()) ||
+            (m_click == Select)) {
+          colors.push_back(color);
+        }
+      }
+      return colors;
+    }
+
+    void setShade(const Shade& shade) {
+      m_shade = shade;
+      invalidate();
+      getParent()->getParent()->layout();
+    }
+
+  private:
+
+    void onChangeColorBarSelection() {
+      if (!isVisible())
+        return;
+
+      doc::PalettePicks picks;
+      ColorBar::instance()->getPaletteView()->getSelectedEntries(picks);
+
+      m_shade.resize(picks.picks());
+
+      int i = 0, j = 0;
+      for (bool pick : picks) {
+        if (pick)
+          m_shade[j++] = app::Color::fromIndex(i);
+        ++i;
+      }
+
+      getParent()->getParent()->layout();
+    }
+
+    bool onProcessMessage(ui::Message* msg) override {
+      switch (msg->type()) {
+
+        case kOpenMessage:
+          if (m_click == DragAndDrop) {
+            m_conn = ColorBar::instance()->ChangeSelection.connect(
+              Bind<void>(&ShadeWidget::onChangeColorBarSelection, this));
+          }
+          break;
+
+        case kSetCursorMessage:
+          if (hasCapture()) {
+            ui::set_mouse_cursor(kMoveCursor);
+            return true;
+          }
+          break;
+
+        case kMouseEnterMessage:
+        case kMouseLeaveMessage:
+          invalidate();
+          break;
+
+        case kMouseDownMessage: {
+          if (m_click == DragAndDrop) {
+            if (m_hotIndex >= 0) {
+              m_dragIndex = m_hotIndex;
+              m_dropBefore = false;
+              captureMouse();
+            }
+          }
+          break;
+        }
+
+        case kMouseUpMessage: {
+          if (m_click == Select) {
+            setSelected(true);
+            Click();
+            closeWindow();
+          }
+
+          if (m_dragIndex >= 0) {
+            auto color = m_shade[m_dragIndex];
+            m_shade.erase(m_shade.begin()+m_dragIndex);
+            if (m_hotIndex >= 0)
+              m_shade.insert(m_shade.begin()+m_hotIndex, color);
+
+            m_dragIndex = -1;
+            invalidate();
+
+            // Relayout the context bar if we have removed an entry.
+            if (m_hotIndex < 0)
+              getParent()->getParent()->layout();
+          }
+
+          if (hasCapture())
+            releaseMouse();
+          break;
+        }
+
+        case kMouseMoveMessage: {
+          MouseMessage* mouseMsg = static_cast<MouseMessage*>(msg);
+          gfx::Point mousePos = mouseMsg->position() - getBounds().getOrigin();
+          gfx::Rect bounds = getClientBounds();
+          int hot = -1;
+
+          bounds.shrink(3*guiscale());
+
+          if (bounds.contains(mousePos)) {
+            int count = size();
+            hot = (mousePos.x - bounds.x) / (m_boxSize*guiscale());
+            hot = MID(0, hot, count-1);
+          }
+
+          if (m_hotIndex != hot) {
+            m_hotIndex = hot;
+            invalidate();
+          }
+
+          bool dropBefore =
+            (hot >= 0 && mousePos.x < (bounds.x+m_boxSize*guiscale()*hot)+m_boxSize*guiscale()/2);
+          if (m_dropBefore != dropBefore) {
+            m_dropBefore = dropBefore;
+            invalidate();
+          }
+          break;
+        }
+      }
+      return Widget::onProcessMessage(msg);
+    }
+
+    void onPreferredSize(PreferredSizeEvent& ev) override {
+      int size = this->size();
+      if (size < 2)
+        ev.setPreferredSize(Size((16+m_boxSize)*guiscale()+getTextWidth(), 18*guiscale()));
       else {
-        for (int i=0; i<int(colors.size())-1; ++i)
-          remap->map(colors[i].getIndex(), colors[i+1].getIndex());
+        if (m_click == Select && size > 16)
+          size = 16;
+        ev.setPreferredSize(Size(6+m_boxSize*size, 18)*guiscale());
       }
     }
 
-    return remap.release();
+    void onPaint(PaintEvent& ev) override {
+      SkinTheme* theme = SkinTheme::instance();
+      Graphics* g = ev.getGraphics();
+      gfx::Rect bounds = getClientBounds();
+
+      gfx::Color bg = getBgColor();
+      if (m_click == Select && hasMouseOver())
+        bg = theme->colors.menuitemHighlightFace();
+      g->fillRect(bg, bounds);
+
+      Shade colors = getShade();
+      if (colors.size() >= 2) {
+        int w = (6+m_boxSize*colors.size())*guiscale();
+        if (bounds.w > w)
+          bounds.w = w;
+      }
+
+      skin::Style::State state;
+      if (hasMouseOver()) state += Style::hover();
+      theme->styles.view()->paint(g, bounds, nullptr, state);
+
+      bounds.shrink(3*guiscale());
+
+      gfx::Rect box(bounds.x, bounds.y, m_boxSize*guiscale(), bounds.h);
+
+      if (colors.size() >= 2) {
+        gfx::Rect hotBounds;
+
+        int j = 0;
+        for (int i=0; i<int(colors.size()); ++i) {
+          if (i == int(colors.size())-1)
+            box.w = bounds.x+bounds.w-box.x;
+
+          app::Color color;
+
+          if (m_dragIndex >= 0 &&
+              m_hotIndex == i) {
+            color = colors[m_dragIndex];
+          }
+          else {
+            if (j == m_dragIndex) {
+              ++j;
+            }
+            if (j < int(colors.size()))
+              color = colors[j++];
+            else
+              color = app::Color::fromMask();
+          }
+
+          draw_color(g, box, color);
+
+          if (m_hotIndex == i)
+            hotBounds = box;
+
+          box.x += box.w;
+        }
+
+        if (!hotBounds.isEmpty() && m_click == DragAndDrop) {
+          hotBounds.enlarge(3*guiscale());
+
+          Style::State state = Style::active();
+          state += Style::hover();
+          theme->styles.timelineRangeOutline()->paint(
+            g, hotBounds, NULL, state);
+        }
+      }
+      else {
+        g->fillRect(theme->colors.editorFace(), bounds);
+        g->drawAlignedUIString(getText(), theme->colors.face(), gfx::ColorNone, bounds,
+                               ui::CENTER | ui::MIDDLE);
+      }
+    }
+
+    ClickType m_click;
+    Shade m_shade;
+    int m_hotIndex;
+    int m_dragIndex;
+    bool m_dropBefore;
+    int m_boxSize;
+    ScopedConnection m_conn;
+  };
+
+public:
+  InkShadesField()
+    : m_button(SkinTheme::instance()->parts.iconArrowDown()->getBitmap(0))
+    , m_shade(Shade(), ShadeWidget::DragAndDrop)
+    , m_loaded(false) {
+    SkinTheme* theme = SkinTheme::instance();
+    m_shade.setBgColor(theme->colors.workspace());
+    m_button.setBgColor(theme->colors.workspace());
+
+    noBorderNoChildSpacing();
+    addChild(&m_button);
+    addChild(&m_shade);
+
+    m_button.setFocusStop(false);
+    m_button.Click.connect(Bind<void>(&InkShadesField::onShowMenu, this));
+  }
+
+  ~InkShadesField() {
+    saveShades();
+  }
+
+  void reverseShadeColors() {
+    m_shade.reverseShadeColors();
+  }
+
+  doc::Remap* createShadeRemap(bool left) {
+    return m_shade.createShadeRemap(left);
   }
 
 private:
+  void onShowMenu() {
+    loadShades();
+    gfx::Rect bounds = m_button.getBounds();
 
-  Colors getColors() const {
-    Colors colors;
-    for (const auto& color : m_colors) {
-      if (color.getIndex() >= 0 &&
-          color.getIndex() < get_current_palette()->size())
-        colors.push_back(color);
-    }
-    return colors;
-  }
+    Menu menu;
+    MenuItem
+      reverse("Reverse Shade"),
+      save("Save Shade");
+    menu.addChild(&reverse);
+    menu.addChild(&save);
 
-  void onChangeColorBarSelection() {
-    if (!isVisible())
-      return;
+    bool hasShade = (m_shade.size() >= 2);
+    reverse.setEnabled(hasShade);
+    save.setEnabled(hasShade);
+    reverse.Click.connect(Bind<void>(&InkShadesField::reverseShadeColors, this));
+    save.Click.connect(Bind<void>(&InkShadesField::onSaveShade, this));
 
-    doc::PalettePicks picks;
-    ColorBar::instance()->getPaletteView()->getSelectedEntries(picks);
+    if (!m_shades.empty()) {
+      SkinTheme* theme = SkinTheme::instance();
 
-    m_colors.resize(picks.picks());
+      menu.addChild(new MenuSeparator);
 
-    int i = 0, j = 0;
-    for (bool pick : picks) {
-      if (pick)
-        m_colors[j++] = app::Color::fromIndex(i);
-      ++i;
-    }
+      int i = 0;
+      for (const Shade& shade : m_shades) {
+        auto shadeWidget = new ShadeWidget(shade, ShadeWidget::Select);
+        shadeWidget->setExpansive(true);
+        shadeWidget->setBgColor(theme->colors.menuitemNormalFace());
+        shadeWidget->Click.connect(
+          [&]{
+            m_shade.setShade(shade);
+          });
 
-    getParent()->layout();
-  }
+        auto close = new IconButton(theme->parts.iconClose()->getBitmap(0));
+        close->setBgColor(theme->colors.menuitemNormalFace());
+        close->Click.connect(
+          Bind<void>(
+            [this, i, close]{
+              m_shades.erase(m_shades.begin()+i);
+              close->closeWindow();
+            }));
 
-  bool onProcessMessage(ui::Message* msg) override {
-    if (msg->type() == kOpenMessage) {
-      ColorBar::instance()->ChangeSelection.connect(
-        Bind<void>(&InkShadesField::onChangeColorBarSelection, this));
-    }
-    return Widget::onProcessMessage(msg);
-  }
-
-  void onPreferredSize(PreferredSizeEvent& ev) override {
-    int size = getColors().size();
-
-    if (size < 2)
-      ev.setPreferredSize(Size(16+getTextWidth(), 18)*guiscale());
-    else
-      ev.setPreferredSize(Size(6+12*size, 18)*guiscale());
-  }
-
-  void onPaint(PaintEvent& ev) override {
-    SkinTheme* theme = SkinTheme::instance();
-    Graphics* g = ev.getGraphics();
-    gfx::Rect bounds = getClientBounds();
-
-    skin::Style::State state;
-    if (hasMouseOver()) state += Style::hover();
-
-    g->fillRect(theme->colors.workspace(), bounds);
-    theme->styles.view()->paint(g, bounds, nullptr, state);
-
-    bounds.shrink(3*guiscale());
-
-    gfx::Rect box(bounds.x, bounds.y, 12*guiscale(), bounds.h);
-    Colors colors = getColors();
-
-    if (colors.size() >= 2) {
-      for (int i=0; i<int(colors.size()); ++i) {
-        if (i == int(colors.size())-1)
-          box.w = bounds.x+bounds.w-box.x;
-
-        draw_color(g, box, colors[i]);
-        box.x += box.w;
+        auto item = new HBox();
+        item->noBorderNoChildSpacing();
+        item->addChild(shadeWidget);
+        item->addChild(close);
+        menu.addChild(item);
+        ++i;
       }
     }
-    else {
-      g->fillRect(theme->colors.editorFace(), bounds);
-      g->drawAlignedUIString(getText(), theme->colors.face(), gfx::ColorNone, bounds,
-                             ui::CENTER | ui::MIDDLE);
+
+    menu.showPopup(gfx::Point(bounds.x, bounds.y+bounds.h));
+    m_button.invalidate();
+  }
+
+  void onSaveShade() {
+    loadShades();
+    m_shades.push_back(m_shade.getShade());
+  }
+
+  void loadShades() {
+    if (m_loaded)
+      return;
+
+    m_loaded = true;
+
+    char buf[32];
+    int n = get_config_int("shades", "count", 0);
+    n = MID(0, n, 256);
+    for (int i=0; i<n; ++i) {
+      sprintf(buf, "shade%d", i);
+      Shade shade = shade_from_string(get_config_string("shades", buf, ""));
+      if (shade.size() >= 2)
+        m_shades.push_back(shade);
     }
   }
 
-  std::vector<app::Color> m_colors;
+  void saveShades() {
+    if (!m_loaded)
+      return;
+
+    char buf[32];
+    int n = int(m_shades.size());
+    set_config_int("shades", "count", n);
+    for (int i=0; i<n; ++i) {
+      sprintf(buf, "shade%d", i);
+      set_config_string("shades", buf, shade_to_string(m_shades[i]).c_str());
+    }
+  }
+
+  IconButton m_button;
+  ShadeWidget m_shade;
+  std::vector<Shade> m_shades;
+  bool m_loaded;
 };
 
 class ContextBar::InkOpacityField : public IntEntry
@@ -809,147 +1058,6 @@ private:
   bool m_lockChange;
 };
 
-#if 0 // TODO for v1.1 to avoid changing the UI
-
-class ContextBar::FreehandAlgorithmField : public Button
-                                         , public IButtonIcon
-{
-public:
-  FreehandAlgorithmField()
-    : Button("")
-    , m_popupWindow(NULL)
-    , m_tooltipManager(NULL) {
-    setup_mini_look(this);
-    setIconInterface(this);
-  }
-
-  ~FreehandAlgorithmField() {
-    closePopup();
-    setIconInterface(NULL);
-  }
-
-  void setupTooltips(TooltipManager* tooltipManager) {
-    m_tooltipManager = tooltipManager;
-  }
-
-  void setFreehandAlgorithm(FreehandAlgorithm algo) {
-    SkinTheme* theme = SkinTheme::instance();
-    SkinPartPtr part = theme->parts.freehandAlgoDefault();
-    m_freehandAlgo = algo;
-    switch (m_freehandAlgo) {
-      case kDefaultFreehandAlgorithm:
-        part = theme->parts.freehandAlgoDefault();
-        break;
-      case kPixelPerfectFreehandAlgorithm:
-        part = theme->parts.freehandAlgoPixelPerfect();
-        break;
-      case kDotsFreehandAlgorithm:
-        part = theme->parts.freehandAlgoDots();
-        break;
-    }
-    m_bitmap = part;
-    invalidate();
-  }
-
-  // IButtonIcon implementation
-  void destroy() override {
-    // Do nothing, BrushTypeField is added as a widget in the
-    // ContextBar, so it will be destroyed together with the
-    // ContextBar.
-  }
-
-  gfx::Size getSize() override {
-    return m_bitmap->getSize();
-  }
-
-  she::Surface* getNormalIcon() override {
-    return m_bitmap->getBitmap(0);
-  }
-
-  she::Surface* getSelectedIcon() override {
-    return m_bitmap->getBitmap(0);
-  }
-
-  she::Surface* getDisabledIcon() override {
-    return m_bitmap->getBitmap(0);
-  }
-
-  int getIconAlign() override {
-    return CENTER | MIDDLE;
-  }
-
-protected:
-  void onClick(Event& ev) override {
-    Button::onClick(ev);
-
-    if (!m_popupWindow || !m_popupWindow->isVisible())
-      openPopup();
-    else
-      closePopup();
-  }
-
-  void onPreferredSize(PreferredSizeEvent& ev) override {
-    ev.setPreferredSize(Size(16, 18)*guiscale());
-  }
-
-private:
-  void openPopup() {
-    SkinTheme* theme = static_cast<SkinTheme*>(getTheme());
-
-    Border border = Border(2, 2, 2, 3)*guiscale();
-    Rect rc = getBounds();
-    rc.y += rc.h;
-    rc.w *= 3;
-    m_popupWindow = new PopupWindow("", PopupWindow::kCloseOnClickInOtherWindow);
-    m_popupWindow->setAutoRemap(false);
-    m_popupWindow->setBorder(border);
-    m_popupWindow->setBounds(rc + border);
-
-    Region rgn(m_popupWindow->getBounds().createUnion(getBounds()));
-    m_popupWindow->setHotRegion(rgn);
-    m_freehandAlgoButton = new ButtonSet(3);
-    m_freehandAlgoButton->addItem(theme->parts.freehandAlgoDefault());
-    m_freehandAlgoButton->addItem(theme->parts.freehandAlgoPixelPerfect());
-    m_freehandAlgoButton->addItem(theme->parts.freehandAlgoDots());
-    m_freehandAlgoButton->setSelectedItem((int)m_freehandAlgo);
-    m_freehandAlgoButton->ItemChange.connect(&FreehandAlgorithmField::onFreehandAlgoChange, this);
-    m_freehandAlgoButton->setTransparent(true);
-    m_freehandAlgoButton->setBgColor(gfx::ColorNone);
-
-    m_tooltipManager->addTooltipFor(at(0), "Normal trace", TOP);
-    m_tooltipManager->addTooltipFor(at(1), "Pixel-perfect trace", TOP);
-    m_tooltipManager->addTooltipFor(at(2), "Dots", TOP);
-
-    m_popupWindow->addChild(m_freehandAlgoButton);
-    m_popupWindow->openWindow();
-  }
-
-  void closePopup() {
-    if (m_popupWindow) {
-      m_popupWindow->closeWindow(NULL);
-      delete m_popupWindow;
-      m_popupWindow = NULL;
-      m_freehandAlgoButton = NULL;
-    }
-  }
-
-  void onFreehandAlgoChange() {
-    setFreehandAlgorithm(
-      (FreehandAlgorithm)m_freehandAlgoButton->getSelectedItem());
-
-    Tool* tool = App::instance()->activeTool();
-    Preferences::instance().tool(tool).freehandAlgorithm(m_freehandAlgo);
-  }
-
-  SkinPartPtr m_bitmap;
-  FreehandAlgorithm m_freehandAlgo;
-  PopupWindow* m_popupWindow;
-  ButtonSet* m_freehandAlgoButton;
-  TooltipManager* m_tooltipManager;
-};
-
-#else
-
 class ContextBar::FreehandAlgorithmField : public CheckBox
 {
 public:
@@ -988,8 +1096,6 @@ protected:
     releaseFocus();
   }
 };
-
-#endif
 
 class ContextBar::SelectionModeField : public ButtonSet
 {
@@ -1268,6 +1374,15 @@ void ContextBar::onToolSetOpacity(const int& newOpacity)
   m_inkOpacity->setTextf("%d", newOpacity);
 }
 
+void ContextBar::onToolSetFreehandAlgorithm()
+{
+  Tool* tool = App::instance()->activeTool();
+  if (tool) {
+    m_freehandAlgo->setFreehandAlgorithm(
+      Preferences::instance().tool(tool).freehandAlgorithm());
+  }
+}
+
 void ContextBar::onBrushSizeChange()
 {
   if (m_activeBrush->type() != kImageBrushType)
@@ -1308,6 +1423,14 @@ void ContextBar::updateForCurrentTool()
 
 void ContextBar::updateForTool(tools::Tool* tool)
 {
+  // TODO Improve the design of the visibility of ContextBar
+  // items. Actually this manual show/hide logic is a mess. There
+  // should be a IContextBarUser interface, with a method to ask who
+  // needs which items to be visible. E.g. different tools elements
+  // (inks, controllers, etc.) and sprite editor states are the main
+  // target to implement this new IContextBarUser and ask for
+  // ContextBar elements.
+
   base::ScopedValue<bool> lockFlag(g_updatingFromCode, true, g_updatingFromCode);
 
   ToolPreferences* toolPref = nullptr;
@@ -1323,6 +1446,7 @@ void ContextBar::updateForTool(tools::Tool* tool)
     m_sizeConn = brushPref->size.AfterChange.connect(Bind<void>(&ContextBar::onBrushSizeChange, this));
     m_angleConn = brushPref->angle.AfterChange.connect(Bind<void>(&ContextBar::onBrushAngleChange, this));
     m_opacityConn = toolPref->opacity.AfterChange.connect(&ContextBar::onToolSetOpacity, this);
+    m_freehandAlgoConn = toolPref->freehandAlgorithm.AfterChange.connect(Bind<void>(&ContextBar::onToolSetFreehandAlgorithm, this));
   }
 
   if (tool)
@@ -1362,7 +1486,7 @@ void ContextBar::updateForTool(tools::Tool* tool)
     m_stopAtGrid->setSelected(
       toolPref->floodfill.stopAtGrid() == app::gen::StopAtGrid::IF_VISIBLE ? true: false);
 
-    m_inkType->setInkType(toolPref->ink());
+    m_inkType->setInkTypeIcon(toolPref->ink());
     m_inkOpacity->setTextf("%d", toolPref->opacity());
 
     hasInkWithOpacity =
@@ -1450,7 +1574,10 @@ void ContextBar::updateForTool(tools::Tool* tool)
   m_pivot->setVisible(true);
   m_dropPixels->setVisible(false);
   m_selectBoxHelp->setVisible(false);
-  m_symmetry->setVisible(Preferences::instance().symmetryMode.enabled());
+
+  m_symmetry->setVisible(
+    Preferences::instance().symmetryMode.enabled() &&
+    (isPaint || isEffect || hasSelectOptions));
   m_symmetry->updateWithCurrentDocument();
 
   layout();
@@ -1620,9 +1747,19 @@ doc::BrushRef ContextBar::createBrushFromPreferences(ToolPreferences::Brush* bru
   return brush;
 }
 
-doc::Remap* ContextBar::createShadesRemap(bool left)
+doc::Remap* ContextBar::createShadeRemap(bool left)
 {
-  return m_inkShades->createShadesRemap(left);
+  return m_inkShades->createShadeRemap(left);
+}
+
+void ContextBar::reverseShadeColors()
+{
+  m_inkShades->reverseShadeColors();
+}
+
+void ContextBar::setInkType(tools::InkType type)
+{
+  m_inkType->setInkType(type);
 }
 
 } // namespace app

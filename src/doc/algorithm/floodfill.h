@@ -1,5 +1,5 @@
 // Aseprite Document Library
-// Copyright (c) 2001-2014 David Capello
+// Copyright (c) 2001-2015 David Capello
 //
 // This file is released under the terms of the MIT license.
 // Read LICENSE.txt for more information.
@@ -14,13 +14,17 @@
 namespace doc {
 
   class Image;
+  class Mask;
 
   namespace algorithm {
 
-    void floodfill(Image* image, int x, int y,
-      const gfx::Rect& bounds,
-      int tolerance, bool contiguous,
-      void* data, AlgoHLine proc);
+    void floodfill(const Image* image,
+                   const Mask* mask,
+                   int x, int y,
+                   const gfx::Rect& bounds,
+                   int tolerance, bool contiguous,
+                   void* data,
+                   AlgoHLine proc);
 
   }
 }

@@ -16,13 +16,15 @@
 namespace app {
   namespace tools {
 
-    typedef std::vector<Stroke> Strokes;
+    class ToolLoop;
 
     // This class controls user input.
     class Symmetry {
     public:
       virtual ~Symmetry() { }
-      virtual void generateStrokes(const Stroke& stroke, Strokes& strokes) = 0;
+
+      // The "stroke" must be relative to the sprite origin.
+      virtual void generateStrokes(const Stroke& stroke, Strokes& strokes, ToolLoop* loop) = 0;
     };
 
   } // namespace tools

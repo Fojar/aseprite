@@ -312,7 +312,7 @@ void KeyboardShortcuts::importFile(TiXmlElement* rootElement, KeySource source)
     const char* command_key = get_shortcut(xmlKey);
     bool removed = bool_attr_is_true(xmlKey, "removed");
 
-    if (command_name && command_key) {
+    if (command_name) {
       Command* command = CommandsModule::instance()->getCommandByName(command_name);
       if (command) {
         // Read context
@@ -339,19 +339,18 @@ void KeyboardShortcuts::importFile(TiXmlElement* rootElement, KeySource source)
           xmlParam = xmlParam->NextSiblingElement();
         }
 
-        LOG(" - Shortcut for command `%s' <%s>\n", command_name, command_key);
-
         // add the keyboard shortcut to the command
         Key* key = this->command(command_name, params, keycontext);
-        if (key) {
+        if (key && command_key) {
           Accelerator accel(command_key);
 
           if (!removed) {
             key->add(accel, source);
 
-            // Add the shortcut to the menuitems with this
-            // command (this is only visual, the "manager_msg_proc"
-            // is the only one that process keyboard shortcuts)
+            // Add the shortcut to the menuitems with this command
+            // (this is only visual, the
+            // "CustomizedGuiManager::onProcessMessage" is the only
+            // one that process keyboard shortcuts)
             if (key->accels().size() == 1) {
               AppMenus::instance()->applyShortcutToMenuitemsWithCommand(
                 command, params, key);

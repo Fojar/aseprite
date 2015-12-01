@@ -568,6 +568,7 @@ void SkinTheme::initWidget(Widget* widget)
         parts.sunkenNormal()->getBitmapN()->height(),
         parts.sunkenNormal()->getBitmapE()->width(),
         parts.sunkenNormal()->getBitmapS()->height());
+      widget->setChildSpacing(3 * scale);
       break;
 
     case kGridWidget:
@@ -649,17 +650,6 @@ void SkinTheme::initWidget(Widget* widget)
       // Vertical bar
       else {
         BORDER4(4 * scale, 2 * scale, 1 * scale, 2 * scale);
-      }
-
-      if (widget->hasText()) {
-        gfx::Border border = widget->border();
-
-        if (widget->getAlign() & TOP)
-          border.top(widget->getTextHeight());
-        else if (widget->getAlign() & BOTTOM)
-          border.bottom(widget->getTextHeight());
-
-        widget->setBorder(border);
       }
       break;
 
@@ -901,8 +891,7 @@ void SkinTheme::paintEntry(PaintEvent& ev)
   gfx::Rect bounds = widget->getClientBounds();
   bool password = widget->isPassword();
   int scroll, caret, state, selbeg, selend;
-  std::string textString = widget->getText() + widget->getSuffix();
-  int suffixIndex = widget->getTextLength();
+  const std::string& textString = widget->getText();
   int c, ch, x, y, w;
   int caret_x;
 
@@ -924,12 +913,12 @@ void SkinTheme::paintEntry(PaintEvent& ev)
     bg);
 
   // Draw the text
-  x = bounds.x + widget->border().left();
-  y = bounds.y + bounds.h/2 - widget->getTextHeight()/2;
+  bounds = widget->getEntryTextBounds();
+  x = bounds.x;
+  y = bounds.y;
 
   base::utf8_const_iterator utf8_it = base::utf8_const_iterator(textString.begin());
   int textlen = base::utf8_length(textString);
-
   if (scroll < textlen)
     utf8_it += scroll;
 
@@ -955,17 +944,8 @@ void SkinTheme::paintEntry(PaintEvent& ev)
       fg = colors.disabled();
     }
 
-    // Suffix
-    if (c >= suffixIndex) {
-      if (widget->hasFocus())
-        break;
-
-      bg = ColorNone;
-      fg = colors.entrySuffix();
-    }
-
     w = g->measureChar(ch).w;
-    if (x+w > bounds.x2()-3)
+    if (x+w > bounds.x2()-widget->childSpacing()*guiscale())
       return;
 
     caret_x = x;
@@ -975,6 +955,20 @@ void SkinTheme::paintEntry(PaintEvent& ev)
     // Caret
     if ((c == caret) && (state) && (widget->hasFocus()))
       drawEntryCaret(g, widget, caret_x, y);
+  }
+
+  // Draw suffix if there is enough space
+  if (!widget->getSuffix().empty()) {
+    Rect sufBounds(x, y,
+                   bounds.x2()-widget->childSpacing()*guiscale()-x,
+                   widget->getTextHeight());
+    IntersectClip clip(g, sufBounds);
+    if (clip) {
+      drawTextString(
+        g, widget->getSuffix().c_str(),
+        colors.entrySuffix(), ColorNone,
+        widget, sufBounds, 0);
+    }
   }
 
   // Draw the caret if it is next of the last character
@@ -1225,22 +1219,27 @@ void SkinTheme::paintSeparator(ui::PaintEvent& ev)
   // background
   g->fillRect(BGCOLOR, bounds);
 
-  if (widget->getAlign() & HORIZONTAL)
-    drawHline(g, bounds, parts.separatorHorz().get());
+  if (widget->getAlign() & HORIZONTAL) {
+    int h = parts.separatorHorz()->getBitmap(0)->height();
+    drawHline(g, gfx::Rect(bounds.x, bounds.y+bounds.h/2-h/2,
+                           bounds.w, h),
+              parts.separatorHorz().get());
+  }
 
-  if (widget->getAlign() & VERTICAL)
-    drawVline(g, bounds, parts.separatorVert().get());
+  if (widget->getAlign() & VERTICAL) {
+    int w = parts.separatorVert()->getBitmap(0)->width();
+    drawVline(g, gfx::Rect(bounds.x+bounds.w/2-w/2, bounds.y,
+                           w, bounds.h),
+              parts.separatorVert().get());
+  }
 
   // text
   if (widget->hasText()) {
     int h = widget->getTextHeight();
     Rect r(
-      Point(
-        bounds.x + widget->border().left()/2 + h/2,
-        bounds.y + widget->border().top()/2 - h/2),
-      Point(
-        bounds.x2() - widget->border().right()/2 - h,
-        bounds.y2() - widget->border().bottom()/2 + h));
+      bounds.x + widget->border().left()/2 + h/2,
+      bounds.y + bounds.h/2 - h/2,
+      widget->getTextWidth(), h);
 
     drawTextString(g, NULL,
       colors.separatorLabel(), BGCOLOR,

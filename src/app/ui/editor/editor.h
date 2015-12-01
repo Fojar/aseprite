@@ -68,8 +68,13 @@ namespace app {
       kShowOnionskin = 4,
       kShowOutside = 8,
       kShowDecorators = 16,
-      kDefaultEditorFlags = (kShowGrid | kShowMask |
-        kShowOnionskin | kShowOutside | kShowDecorators),
+      kShowSymmetryLine = 32,
+      kDefaultEditorFlags = (kShowGrid |
+                             kShowMask |
+                             kShowOnionskin |
+                             kShowOutside |
+                             kShowDecorators |
+                             kShowSymmetryLine)
     };
 
     enum class ZoomBehavior {
@@ -180,7 +185,7 @@ namespace app {
     void setZoomAndCenterInMouse(const render::Zoom& zoom,
       const gfx::Point& mousePos, ZoomBehavior zoomBehavior);
 
-    void pasteImage(const Image* image, const Mask* mask);
+    void pasteImage(const Image* image, const Mask* mask = nullptr);
 
     void startSelectionTransformation(const gfx::Point& move, double angle);
 
