@@ -13,6 +13,7 @@ add_library(doc-lib
   algorithm/shrink_bounds.cpp
   anidir.cpp
   blend_funcs.cpp
+  blend_mode.cpp
   brush.cpp
   cel.cpp
   cel_data.cpp
@@ -54,7 +55,8 @@ add_library(doc-lib
   sprite.cpp
   sprites.cpp
   string_io.cpp
-  subobjects_io.cpp)
+  subobjects_io.cpp
+  user_data_io.cpp)
 
 # TODO Remove 'she' as dependency and move conversion_she.cpp/h files
 #      to other library/layer (render-lib? new conversion-lib?)

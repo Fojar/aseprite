@@ -53,6 +53,7 @@ namespace she {
 
     virtual void maximize() = 0;
     virtual bool isMaximized() const = 0;
+    virtual bool isMinimized() const = 0;
 
     virtual void setTitleBar(const std::string& title) = 0;
 
@@ -61,6 +62,11 @@ namespace she {
     virtual void setMousePosition(const gfx::Point& position) = 0;
     virtual void captureMouse() = 0;
     virtual void releaseMouse() = 0;
+
+    // Set/get the specific information to restore the exact same
+    // window position (e.g. in the same monitor).
+    virtual std::string getLayout() = 0;
+    virtual void setLayout(const std::string& layout) = 0;
 
     // Returns the HWND on Windows.
     virtual DisplayHandle nativeHandle() = 0;

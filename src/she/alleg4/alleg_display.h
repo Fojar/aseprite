@@ -31,12 +31,15 @@ namespace she {
     void flip(const gfx::Rect& bounds) override;
     void maximize() override;
     bool isMaximized() const override;
+    bool isMinimized() const override;
     void setTitleBar(const std::string& title) override;
     NativeCursor nativeMouseCursor() override;
     bool setNativeMouseCursor(NativeCursor cursor) override;
     void setMousePosition(const gfx::Point& position) override;
     void captureMouse() override;
     void releaseMouse() override;
+    std::string getLayout() override;
+    void setLayout(const std::string& layout) override;
     void* nativeHandle() override;
 
   private:
