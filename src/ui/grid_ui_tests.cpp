@@ -26,24 +26,24 @@ TEST(Grid, Simple2x1Grid)
   grid->addChildInCell(w2, 1, 1, 0);
 
   // Test request-size
-  Size reqSize = grid->getPreferredSize();
+  Size reqSize = grid->sizeHint();
   EXPECT_EQ(20, reqSize.w);
   EXPECT_EQ(10, reqSize.h);
 
   // Test child-spacing
   grid->setChildSpacing(2);
-  reqSize = grid->getPreferredSize();
+  reqSize = grid->sizeHint();
   EXPECT_EQ(22, reqSize.w);
   EXPECT_EQ(10, reqSize.h);
 
   // Test borders
   grid->setBorder(gfx::Border(3, 0, 0, 3));
-  reqSize = grid->getPreferredSize();
+  reqSize = grid->sizeHint();
   EXPECT_EQ(25, reqSize.w);
   EXPECT_EQ(13, reqSize.h);
 
   grid->setBorder(gfx::Border(3, 2, 5, 3));
-  reqSize = grid->getPreferredSize();
+  reqSize = grid->sizeHint();
   EXPECT_EQ(30, reqSize.w);
   EXPECT_EQ(15, reqSize.h);
 
@@ -63,22 +63,22 @@ TEST(Grid, Expand2ndWidget)
   grid->addChildInCell(w2, 1, 1, HORIZONTAL | TOP);
 
   // Test request size
-  Size reqSize = grid->getPreferredSize();
+  Size reqSize = grid->sizeHint();
   EXPECT_EQ(30, reqSize.w);
   EXPECT_EQ(20, reqSize.h);
 
   // Test layout
   grid->setBounds(gfx::Rect(0, 0, 40, 20));
 
-  EXPECT_EQ(0, w1->getBounds().x);
-  EXPECT_EQ(0, w1->getBounds().y);
-  EXPECT_EQ(20, w1->getBounds().w);
-  EXPECT_EQ(20, w1->getBounds().h);
+  EXPECT_EQ(0, w1->bounds().x);
+  EXPECT_EQ(0, w1->bounds().y);
+  EXPECT_EQ(20, w1->bounds().w);
+  EXPECT_EQ(20, w1->bounds().h);
 
-  EXPECT_EQ(20, w2->getBounds().x);
-  EXPECT_EQ(0, w2->getBounds().y);
-  EXPECT_EQ(20, w2->getBounds().w);
-  EXPECT_EQ(10, w2->getBounds().h);
+  EXPECT_EQ(20, w2->bounds().x);
+  EXPECT_EQ(0, w2->bounds().y);
+  EXPECT_EQ(20, w2->bounds().w);
+  EXPECT_EQ(10, w2->bounds().h);
 
   delete grid;
 }
@@ -96,17 +96,17 @@ TEST(Grid, SameWidth2x1Grid)
   grid->addChildInCell(w2, 1, 1, 0);
 
   // Test request size
-  Size reqSize = grid->getPreferredSize();
+  Size reqSize = grid->sizeHint();
   EXPECT_EQ(40, reqSize.w);
   EXPECT_EQ(20, reqSize.h);
 
   // Test layout
   grid->setBounds(gfx::Rect(0, 0, 60, 20));
 
-  EXPECT_EQ(0, w1->getBounds().x);
-  EXPECT_EQ(30, w2->getBounds().x);
-  EXPECT_EQ(30, w1->getBounds().w);
-  EXPECT_EQ(30, w2->getBounds().w);
+  EXPECT_EQ(0, w1->bounds().x);
+  EXPECT_EQ(30, w2->bounds().x);
+  EXPECT_EQ(30, w1->bounds().w);
+  EXPECT_EQ(30, w2->bounds().w);
 
   delete grid;
 }
@@ -165,30 +165,30 @@ TEST(Grid, Intrincate3x3Grid)
 
   // Test request size
   grid->setChildSpacing(2);
-  Size reqSize = grid->getPreferredSize();
+  Size reqSize = grid->sizeHint();
   EXPECT_EQ(22, reqSize.w);
   EXPECT_EQ(22, reqSize.h);
 
   // Test layout
   grid->setBounds(gfx::Rect(0, 0, 100, 100));
 
-  EXPECT_EQ(0, w1->getBounds().x);
-  EXPECT_EQ(0, w1->getBounds().y);
-  EXPECT_EQ(12, w2->getBounds().x);
-  EXPECT_EQ(0, w2->getBounds().y);
-  EXPECT_EQ(0, w3->getBounds().x);
-  EXPECT_EQ(12, w3->getBounds().y);
-  EXPECT_EQ(90, w4->getBounds().x);
-  EXPECT_EQ(12, w4->getBounds().y);
+  EXPECT_EQ(0, w1->bounds().x);
+  EXPECT_EQ(0, w1->bounds().y);
+  EXPECT_EQ(12, w2->bounds().x);
+  EXPECT_EQ(0, w2->bounds().y);
+  EXPECT_EQ(0, w3->bounds().x);
+  EXPECT_EQ(12, w3->bounds().y);
+  EXPECT_EQ(90, w4->bounds().x);
+  EXPECT_EQ(12, w4->bounds().y);
 
-  EXPECT_EQ(10, w1->getBounds().w);
-  EXPECT_EQ(10, w1->getBounds().h);
-  EXPECT_EQ(88, w2->getBounds().w);
-  EXPECT_EQ(10, w2->getBounds().h);
-  EXPECT_EQ(88, w3->getBounds().w);
-  EXPECT_EQ(88, w3->getBounds().h);
-  EXPECT_EQ(10, w4->getBounds().w);
-  EXPECT_EQ(88, w4->getBounds().h);
+  EXPECT_EQ(10, w1->bounds().w);
+  EXPECT_EQ(10, w1->bounds().h);
+  EXPECT_EQ(88, w2->bounds().w);
+  EXPECT_EQ(10, w2->bounds().h);
+  EXPECT_EQ(88, w3->bounds().w);
+  EXPECT_EQ(88, w3->bounds().h);
+  EXPECT_EQ(10, w4->bounds().w);
+  EXPECT_EQ(88, w4->bounds().h);
 
   delete grid;
 }
@@ -217,13 +217,13 @@ TEST(Grid, FourColumns)
 
   // Test request size
   grid.setChildSpacing(0);
-  EXPECT_EQ(gfx::Size(40, 20), grid.getPreferredSize());
+  EXPECT_EQ(gfx::Size(40, 20), grid.sizeHint());
 
   // Test layout
   grid.setBounds(gfx::Rect(0, 0, 40, 20));
-  EXPECT_EQ(gfx::Rect(0, 0, 10, 10), a.getBounds());
-  EXPECT_EQ(gfx::Rect(10, 0, 10, 10), b.getBounds());
-  EXPECT_EQ(gfx::Rect(20, 0, 10, 10), c.getBounds());
-  EXPECT_EQ(gfx::Rect(30, 0, 10, 10), d.getBounds());
-  EXPECT_EQ(gfx::Rect(0, 10, 40, 10), e.getBounds());
+  EXPECT_EQ(gfx::Rect(0, 0, 10, 10), a.bounds());
+  EXPECT_EQ(gfx::Rect(10, 0, 10, 10), b.bounds());
+  EXPECT_EQ(gfx::Rect(20, 0, 10, 10), c.bounds());
+  EXPECT_EQ(gfx::Rect(30, 0, 10, 10), d.bounds());
+  EXPECT_EQ(gfx::Rect(0, 10, 40, 10), e.bounds());
 }

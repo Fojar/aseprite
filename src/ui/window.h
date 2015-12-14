@@ -17,15 +17,14 @@
 
 namespace ui {
 
-  class Window : public Widget
-  {
+  class Window : public Widget {
   public:
     enum Type { DesktopWindow, WithTitleBar, WithoutTitleBar };
 
     explicit Window(Type type, const std::string& text = "");
     ~Window();
 
-    Widget* getKiller() const;
+    Widget* closer() const { return m_closer; }
 
     void setAutoRemap(bool state);
     void setMoveable(bool state);
@@ -40,7 +39,7 @@ namespace ui {
 
     void openWindow();
     void openWindowInForeground();
-    void closeWindow(Widget* killer);
+    void closeWindow(Widget* closer);
 
     bool isTopLevel();
     bool isForeground() const { return m_isForeground; }
@@ -54,12 +53,12 @@ namespace ui {
     void removeDecorativeWidgets();
 
     // Signals
-    Signal1<void, CloseEvent&> Close;
+    base::Signal1<void, CloseEvent&> Close;
 
   protected:
     virtual bool onProcessMessage(Message* msg) override;
     virtual void onResize(ResizeEvent& ev) override;
-    virtual void onPreferredSize(PreferredSizeEvent& ev) override;
+    virtual void onSizeHint(SizeHintEvent& ev) override;
     virtual void onPaint(PaintEvent& ev) override;
     virtual void onBroadcastMouseMessage(WidgetsList& targets) override;
     virtual void onSetText() override;
@@ -75,7 +74,7 @@ namespace ui {
     void limitSize(int* w, int* h);
     void moveWindow(const gfx::Rect& rect, bool use_blit);
 
-    Widget* m_killer;
+    Widget* m_closer;
     bool m_isDesktop : 1;
     bool m_isMoveable : 1;
     bool m_isSizeable : 1;

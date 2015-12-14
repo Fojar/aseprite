@@ -31,12 +31,12 @@ namespace app {
     void setColor(const app::Color& color);
 
     // Signals
-    Signal1<void, const app::Color&> Change;
+    base::Signal1<void, const app::Color&> Change;
 
   protected:
     // Events
     bool onProcessMessage(ui::Message* msg) override;
-    void onPreferredSize(ui::PreferredSizeEvent& ev) override;
+    void onSizeHint(ui::SizeHintEvent& ev) override;
     void onPaint(ui::PaintEvent& ev) override;
     void onClick(ui::Event& ev) override;
 

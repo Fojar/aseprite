@@ -218,7 +218,7 @@ namespace app {
 
   protected:
     bool onProcessMessage(ui::Message* msg) override;
-    void onPreferredSize(ui::PreferredSizeEvent& ev) override;
+    void onSizeHint(ui::SizeHintEvent& ev) override;
     void onResize(ui::ResizeEvent& ev) override;
     void onPaint(ui::PaintEvent& ev) override;
     void onInvalidateRegion(const gfx::Region& region) override;
@@ -288,15 +288,15 @@ namespace app {
     // signal (because the editor can be destroyed and the application
     // still continue running and generating CurrentToolChange
     // signals).
-    ScopedConnection m_currentToolChangeConn;
-    ScopedConnection m_fgColorChangeConn;
-    ScopedConnection m_contextBarBrushChangeConn;
+    base::ScopedConnection m_currentToolChangeConn;
+    base::ScopedConnection m_fgColorChangeConn;
+    base::ScopedConnection m_contextBarBrushChangeConn;
 
     // Slots listeing document preferences.
-    ScopedConnection m_tiledConn;
-    ScopedConnection m_gridConn;
-    ScopedConnection m_pixelGridConn;
-    ScopedConnection m_onionskinConn;
+    base::ScopedConnection m_tiledConn;
+    base::ScopedConnection m_gridConn;
+    base::ScopedConnection m_pixelGridConn;
+    base::ScopedConnection m_onionskinConn;
 
     EditorObservers m_observers;
 

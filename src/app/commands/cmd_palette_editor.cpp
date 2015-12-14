@@ -118,7 +118,7 @@ private:
   // PaletteEntryEditor instance.
   bool m_selfPalChange;
 
-  ScopedConnection m_palChangeConn;
+  base::ScopedConnection m_palChangeConn;
 
   // Palette used for relative changes.
   Palette m_fromPalette;
@@ -197,12 +197,21 @@ void PaletteEditorCommand::onExecute(Context* context)
     if (!g_window->isVisible()) {
       // Default bounds
       g_window->remapWindow();
-
+/*
+<<<<<<< HEAD
 	  Rect bounds = g_window->getBounds();
       g_window->setBounds(Rect(
           ui::display_w() - bounds.w - ToolBar::instance()->getBounds().w,
           ui::display_h() - bounds.h - StatusBar::instance()->getBounds().h,
 		  bounds.w, bounds.h));
+=======
+*/
+      int width = MAX(g_window->bounds().w, ui::display_w()/2);
+      g_window->setBounds(Rect(
+          ui::display_w() - width - ToolBar::instance()->bounds().w,
+          ui::display_h() - g_window->bounds().h - StatusBar::instance()->bounds().h,
+          width, g_window->bounds().h));
+//>>>>>>> master
 
       // Load window configuration
       load_window_pos(g_window, "PaletteEditor");
@@ -278,8 +287,8 @@ PaletteEntryEditor::PaletteEntryEditor()
   m_vbox.addChild(&m_bottomBox);
   addChild(&m_vbox);
 
-  m_colorType.ItemChange.connect(Bind<void>(&PaletteEntryEditor::onColorTypeClick, this));
-  m_changeMode.ItemChange.connect(Bind<void>(&PaletteEntryEditor::onChangeModeClick, this));
+  m_colorType.ItemChange.connect(base::Bind<void>(&PaletteEntryEditor::onColorTypeClick, this));
+  m_changeMode.ItemChange.connect(base::Bind<void>(&PaletteEntryEditor::onChangeModeClick, this));
 
   m_rgbSliders.ColorChange.connect(&PaletteEntryEditor::onColorSlidersChange, this);
   m_hsvSliders.ColorChange.connect(&PaletteEntryEditor::onColorSlidersChange, this);
@@ -295,7 +304,7 @@ PaletteEntryEditor::PaletteEntryEditor()
     &PaletteEntryEditor::onFgBgColorChange, this);
 
   // We hook the Window::Close event to save the frame position before closing it.
-  this->Close.connect(Bind<void>(&PaletteEntryEditor::onCloseWindow, this));
+  this->Close.connect(base::Bind<void>(&PaletteEntryEditor::onCloseWindow, this));
 
   // We hook App::Exit signal to destroy the g_window singleton at exit.
   App::instance()->Exit.connect(&PaletteEntryEditor::onExit, this);

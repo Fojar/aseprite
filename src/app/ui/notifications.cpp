@@ -17,7 +17,7 @@
 #include "base/launcher.h"
 #include "ui/menu.h"
 #include "ui/paint_event.h"
-#include "ui/preferred_size_event.h"
+#include "ui/size_hint_event.h"
 
 namespace app {
 
@@ -53,20 +53,20 @@ void Notifications::addLink(INotificationDelegate* del)
   m_withNotifications = true;
 }
 
-void Notifications::onPreferredSize(PreferredSizeEvent& ev)
+void Notifications::onSizeHint(SizeHintEvent& ev)
 {
-  ev.setPreferredSize(gfx::Size(16, 10)*guiscale()); // TODO hard-coded flag size
+  ev.setSizeHint(gfx::Size(16, 10)*guiscale()); // TODO hard-coded flag size
 }
 
 void Notifications::onPaint(PaintEvent& ev)
 {
-  Graphics* g = ev.getGraphics();
+  Graphics* g = ev.graphics();
 
   skin::Style::State state;
   if (hasMouseOver()) state += skin::Style::hover();
   if (m_withNotifications) state += skin::Style::active();
   if (isSelected()) state += skin::Style::clicked();
-  m_flagStyle->paint(g, getClientBounds(), NULL, state);
+  m_flagStyle->paint(g, clientBounds(), NULL, state);
 }
 
 void Notifications::onClick(ui::Event& ev)
@@ -74,9 +74,9 @@ void Notifications::onClick(ui::Event& ev)
   m_withNotifications = false;
   invalidate();
 
-  gfx::Rect bounds = getBounds();
+  gfx::Rect bounds = this->bounds();
   m_popup.showPopup(gfx::Point(
-      bounds.x - m_popup.getPreferredSize().w,
+      bounds.x - m_popup.sizeHint().w,
       bounds.y + bounds.h));
 }
 

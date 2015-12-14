@@ -23,12 +23,12 @@ namespace app {
 
     doc::Palette* selectedPalette();
 
-    Signal1<void, doc::Palette*> PalChange;
+    base::Signal1<void, doc::Palette*> PalChange;
 
   protected:
     virtual void onResourceChange(Resource* resource) override;
     virtual void onPaintResource(ui::Graphics* g, const gfx::Rect& bounds, Resource* resource) override;
-    virtual void onResourcePreferredSize(Resource* resource, gfx::Size& size) override;
+    virtual void onResourceSizeHint(Resource* resource, gfx::Size& size) override;
   };
 
 } // namespace app

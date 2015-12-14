@@ -85,8 +85,8 @@
       <key command="GotoFirstFrame" shortcut="Home" />
       <key command="GotoPreviousFrame" shortcut="Left" context="Normal" />
       <key command="GotoNextFrame" shortcut="Right" context="Normal" />
-      <key command="GotoPreviousFrame" shortcut="," />
-      <key command="GotoNextFrame" shortcut="." />
+      <key command="GotoPreviousFrameWithSameTag" shortcut="," />
+      <key command="GotoNextFrameWithSameTag" shortcut="." />
       <key command="GotoLastFrame" shortcut="End" />
       <key command="GotoFrame" shortcut="Alt+G" />
       <key command="PlayAnimation" shortcut="Enter" />
@@ -216,6 +216,10 @@
       </key>
       <key command="Zoom" shortcut="Ctrl+Shift+=" mac="Cmd+Shift+=">
         <param name="action" value="in" />
+      </key>
+
+      <!-- Scroll to center -->
+      <key command="ScrollCenter" shortcut="C">
       </key>
 
       <!-- Scroll with arrows -->
@@ -667,6 +671,17 @@
         <item command="InvertMask" text="&amp;Inverse" />
         <separator />
         <item command="MaskByColor" text="&amp;Color Range" />
+        <menu text="&amp;Modify">
+          <item command="ModifySelection" text="&amp;Border">
+            <param name="modifier" value="border" />
+          </item>
+          <item command="ModifySelection" text="&amp;Expand">
+            <param name="modifier" value="expand" />
+          </item>
+          <item command="ModifySelection" text="&amp;Contract">
+            <param name="modifier" value="contract" />
+          </item>
+        </menu>
         <separator />
         <item command="LoadMask" text="&amp;Load from MSK file" />
         <item command="SaveMask" text="&amp;Save to MSK file" />

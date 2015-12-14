@@ -99,13 +99,13 @@ namespace app {
     void dropRange(DropOp op);
 
     // ScrollableViewDelegate impl
-    gfx::Size getVisibleSize() const override;
-    gfx::Point getViewScroll() const override;
+    gfx::Size visibleSize() const override;
+    gfx::Point viewScroll() const override;
     void setViewScroll(const gfx::Point& pt) override;
 
   protected:
     bool onProcessMessage(ui::Message* msg) override;
-    void onPreferredSize(ui::PreferredSizeEvent& ev) override;
+    void onSizeHint(ui::SizeHintEvent& ev) override;
     void onResize(ui::ResizeEvent& ev) override;
     void onPaint(ui::PaintEvent& ev) override;
 
@@ -277,7 +277,7 @@ namespace app {
     gfx::Point m_oldPos;
     // Configure timeline
     ConfigureTimelinePopup* m_confPopup;
-    ScopedConnection m_ctxConn;
+    base::ScopedConnection m_ctxConn;
 
     // Marching ants stuff to show the range in the clipboard.
     // TODO merge this with the marching ants of the sprite editor (ui::Editor)

@@ -31,14 +31,14 @@ namespace ui {
     void centerScroll();
     void sortItems();
 
-    Signal0<void> Change;
-    Signal0<void> DoubleClickItem;
+    base::Signal0<void> Change;
+    base::Signal0<void> DoubleClickItem;
 
   protected:
     virtual bool onProcessMessage(Message* msg) override;
     virtual void onPaint(PaintEvent& ev) override;
     virtual void onResize(ResizeEvent& ev) override;
-    virtual void onPreferredSize(PreferredSizeEvent& ev) override;
+    virtual void onSizeHint(SizeHintEvent& ev) override;
     virtual void onChange();
     virtual void onDoubleClickItem();
   };

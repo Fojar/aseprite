@@ -15,7 +15,7 @@
 #include "she/surface.h"
 #include "ui/message.h"
 #include "ui/paint_event.h"
-#include "ui/preferred_size_event.h"
+#include "ui/size_hint_event.h"
 #include "ui/system.h"
 
 namespace app {
@@ -30,9 +30,9 @@ IconButton::IconButton(she::Surface* icon)
   setBgColor(SkinTheme::instance()->colors.menuitemNormalFace());
 }
 
-void IconButton::onPreferredSize(PreferredSizeEvent& ev)
+void IconButton::onSizeHint(SizeHintEvent& ev)
 {
-  ev.setPreferredSize(
+  ev.setSizeHint(
     gfx::Size(m_icon->width(),
               m_icon->height()) + 4*guiscale());
 }
@@ -40,7 +40,7 @@ void IconButton::onPreferredSize(PreferredSizeEvent& ev)
 void IconButton::onPaint(PaintEvent& ev)
 {
   SkinTheme* theme = SkinTheme::instance();
-  Graphics* g = ev.getGraphics();
+  Graphics* g = ev.graphics();
   gfx::Color fg, bg;
 
   if (isSelected()) {
@@ -53,12 +53,12 @@ void IconButton::onPaint(PaintEvent& ev)
   }
   else {
     fg = theme->colors.menuitemNormalText();
-    bg = getBgColor();
+    bg = bgColor();
   }
 
   g->fillRect(bg, g->getClipBounds());
 
-  gfx::Rect bounds = getClientBounds();
+  gfx::Rect bounds = clientBounds();
   g->drawColoredRgbaSurface(
     m_icon, fg,
     bounds.x+bounds.w/2-m_icon->width()/2,

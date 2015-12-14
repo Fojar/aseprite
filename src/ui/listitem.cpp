@@ -11,7 +11,7 @@
 #include "ui/listitem.h"
 
 #include "ui/message.h"
-#include "ui/preferred_size_event.h"
+#include "ui/size_hint_event.h"
 #include "ui/resize_event.h"
 #include "ui/theme.h"
 #include "ui/view.h"
@@ -31,30 +31,30 @@ ListItem::ListItem(const std::string& text)
 
 void ListItem::onPaint(PaintEvent& ev)
 {
-  getTheme()->paintListItem(ev);
+  theme()->paintListItem(ev);
 }
 
 void ListItem::onResize(ResizeEvent& ev)
 {
-  setBoundsQuietly(ev.getBounds());
+  setBoundsQuietly(ev.bounds());
 
-  Rect crect = getChildrenBounds();
-  UI_FOREACH_WIDGET(getChildren(), it)
-    (*it)->setBounds(crect);
+  Rect crect = childrenBounds();
+  for (auto child : children())
+    child->setBounds(crect);
 }
 
-void ListItem::onPreferredSize(PreferredSizeEvent& ev)
+void ListItem::onSizeHint(SizeHintEvent& ev)
 {
   int w = 0, h = 0;
   Size maxSize;
 
   if (hasText())
-    maxSize = getTextSize();
+    maxSize = textSize();
   else
     maxSize.w = maxSize.h = 0;
 
-  UI_FOREACH_WIDGET(getChildren(), it) {
-    Size reqSize = (*it)->getPreferredSize();
+  for (auto child : children()) {
+    Size reqSize = child->sizeHint();
 
     maxSize.w = MAX(maxSize.w, reqSize.w);
     maxSize.h = MAX(maxSize.h, reqSize.h);
@@ -63,7 +63,7 @@ void ListItem::onPreferredSize(PreferredSizeEvent& ev)
   w = maxSize.w + border().width();
   h = maxSize.h + border().height();
 
-  ev.setPreferredSize(Size(w, h));
+  ev.setSizeHint(Size(w, h));
 }
 
 } // namespace ui

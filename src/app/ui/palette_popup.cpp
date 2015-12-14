@@ -30,7 +30,7 @@ namespace app {
 using namespace ui;
 
 PalettePopup::PalettePopup()
-  : PopupWindow("Palettes", kCloseOnClickInOtherWindow)
+  : PopupWindow("Palettes", ClickBehavior::CloseOnClickInOtherWindow)
   , m_popup(new gen::PalettePopup())
 {
   setAutoRemap(false);
@@ -38,8 +38,8 @@ PalettePopup::PalettePopup()
 
   addChild(m_popup);
 
-  m_popup->loadPal()->Click.connect(Bind<void>(&PalettePopup::onLoadPal, this));
-  m_popup->openFolder()->Click.connect(Bind<void>(&PalettePopup::onOpenFolder, this));
+  m_popup->loadPal()->Click.connect(base::Bind<void>(&PalettePopup::onLoadPal, this));
+  m_popup->openFolder()->Click.connect(base::Bind<void>(&PalettePopup::onOpenFolder, this));
 
   m_popup->view()->attachToView(&m_paletteListBox);
 

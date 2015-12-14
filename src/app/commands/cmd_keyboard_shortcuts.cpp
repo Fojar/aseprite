@@ -30,7 +30,7 @@
 #include "ui/graphics.h"
 #include "ui/listitem.h"
 #include "ui/paint_event.h"
-#include "ui/preferred_size_event.h"
+#include "ui/size_hint_event.h"
 #include "ui/resize_event.h"
 #include "ui/separator.h"
 
@@ -83,7 +83,7 @@ private:
         m_key->add(window.accel(), KeySource::UserDefined);
     }
 
-    getRoot()->layout();
+    this->window()->layout();
   }
 
   void onDeleteAccel(int index)
@@ -94,7 +94,7 @@ private:
       return;
 
     m_key->disableAccel(m_key->accels()[index]);
-    getRoot()->layout();
+    window()->layout();
   }
 
   void onAddAccel() {
@@ -118,11 +118,11 @@ private:
       m_key->add(window.accel(), KeySource::UserDefined);
     }
 
-    getRoot()->layout();
+    this->window()->layout();
   }
 
-  void onPreferredSize(PreferredSizeEvent& ev) override {
-    gfx::Size size = getTextSize();
+  void onSizeHint(SizeHintEvent& ev) override {
+    gfx::Size size = textSize();
     size.w = size.w + border().width();
     size.h = size.h + border().height() + 4*guiscale();
 
@@ -132,13 +132,13 @@ private:
         size.h *= combos;
     }
 
-    ev.setPreferredSize(size);
+    ev.setSizeHint(size);
   }
 
   void onPaint(PaintEvent& ev) override {
-    Graphics* g = ev.getGraphics();
-    SkinTheme* theme = static_cast<SkinTheme*>(getTheme());
-    gfx::Rect bounds = getClientBounds();
+    Graphics* g = ev.graphics();
+    SkinTheme* theme = static_cast<SkinTheme*>(this->theme());
+    gfx::Rect bounds = clientBounds();
     gfx::Color fg, bg;
 
     if (isSelected()) {
@@ -153,7 +153,7 @@ private:
     g->fillRect(bg, bounds);
 
     bounds.shrink(border());
-    g->drawUIString(getText(), fg, bg,
+    g->drawUIString(text(), fg, bg,
       gfx::Point(
         bounds.x + m_level*16 * guiscale(),
         bounds.y + 2*guiscale()));
@@ -161,7 +161,7 @@ private:
     if (m_key && !m_key->accels().empty()) {
       std::string buf;
       int y = bounds.y;
-      int dh = getTextSize().h + 4*guiscale();
+      int dh = textSize().h + 4*guiscale();
       int i = 0;
 
       for (const Accelerator& accel : m_key->accels()) {
@@ -191,18 +191,18 @@ private:
       }
 
       case kMouseMoveMessage: {
-        gfx::Rect bounds = getBounds();
+        gfx::Rect bounds = this->bounds();
         MouseMessage* mouseMsg = static_cast<MouseMessage*>(msg);
 
         const Accelerators* accels = (m_key ? &m_key->accels() : NULL);
         int y = bounds.y;
-        int dh = getTextSize().h + 4*guiscale();
+        int dh = textSize().h + 4*guiscale();
         int maxi = (accels && accels->size() > 1 ? accels->size(): 1);
 
         for (int i=0; i<maxi; ++i, y += dh) {
           int w = Graphics::measureUIStringLength(
             (accels && i < (int)accels->size() ? (*accels)[i].toString().c_str(): ""),
-            getFont());
+            font());
           gfx::Rect itemBounds(bounds.x + g_sep, y, w, dh);
           itemBounds = itemBounds.enlarge(
             gfx::Border(
@@ -217,12 +217,12 @@ private:
               m_hotAccel = i;
 
               m_changeButton.reset(new Button(""));
-              m_changeButton->Click.connect(Bind<void>(&KeyItem::onChangeAccel, this, i));
+              m_changeButton->Click.connect(base::Bind<void>(&KeyItem::onChangeAccel, this, i));
               setup_mini_look(m_changeButton.get());
               addChild(m_changeButton.get());
 
               m_deleteButton.reset(new Button(""));
-              m_deleteButton->Click.connect(Bind<void>(&KeyItem::onDeleteAccel, this, i));
+              m_deleteButton->Click.connect(base::Bind<void>(&KeyItem::onDeleteAccel, this, i));
               setup_mini_look(m_deleteButton.get());
               addChild(m_deleteButton.get());
 
@@ -236,7 +236,7 @@ private:
                                           itemBounds.x + itemBounds.w + 2*guiscale(),
                                           itemBounds.y,
                                           Graphics::measureUIStringLength(
-                                            label, getFont()) + 4*guiscale(),
+                                            label, font()) + 4*guiscale(),
                                           itemBounds.h));
               m_deleteButton->setText(label);
 
@@ -247,11 +247,11 @@ private:
           if (i == 0 && !m_addButton &&
               (!m_menuitem || m_menuitem->getCommand())) {
             m_addButton.reset(new Button(""));
-            m_addButton->Click.connect(Bind<void>(&KeyItem::onAddAccel, this));
+            m_addButton->Click.connect(base::Bind<void>(&KeyItem::onAddAccel, this));
             setup_mini_look(m_addButton.get());
             addChild(m_addButton.get());
 
-            itemBounds.w = 8*guiscale() + Graphics::measureUIStringLength("Add", getFont());
+            itemBounds.w = 8*guiscale() + Graphics::measureUIStringLength("Add", font());
             itemBounds.x -= itemBounds.w + 2*guiscale();
 
             m_addButton->setBgColor(gfx::ColorNone);
@@ -295,11 +295,11 @@ public:
     section()->addChild(new ListItem("Tools"));
     section()->addChild(new ListItem("Action Modifiers"));
 
-    search()->Change.connect(Bind<void>(&KeyboardShortcutsWindow::onSearchChange, this));
-    section()->Change.connect(Bind<void>(&KeyboardShortcutsWindow::onSectionChange, this));
-    importButton()->Click.connect(Bind<void>(&KeyboardShortcutsWindow::onImport, this));
-    exportButton()->Click.connect(Bind<void>(&KeyboardShortcutsWindow::onExport, this));
-    resetButton()->Click.connect(Bind<void>(&KeyboardShortcutsWindow::onReset, this));
+    search()->Change.connect(base::Bind<void>(&KeyboardShortcutsWindow::onSearchChange, this));
+    section()->Change.connect(base::Bind<void>(&KeyboardShortcutsWindow::onSectionChange, this));
+    importButton()->Click.connect(base::Bind<void>(&KeyboardShortcutsWindow::onImport, this));
+    exportButton()->Click.connect(base::Bind<void>(&KeyboardShortcutsWindow::onExport, this));
+    resetButton()->Click.connect(base::Bind<void>(&KeyboardShortcutsWindow::onReset, this));
 
     fillAllLists();
   }
@@ -312,16 +312,16 @@ public:
 
 private:
   void deleteAllKeyItems() {
-    while (searchList()->getLastChild())
-      searchList()->removeChild(searchList()->getLastChild());
-    while (menus()->getLastChild())
-      menus()->removeChild(menus()->getLastChild());
-    while (commands()->getLastChild())
-      commands()->removeChild(commands()->getLastChild());
-    while (tools()->getLastChild())
-      tools()->removeChild(tools()->getLastChild());
-    while (actions()->getLastChild())
-      actions()->removeChild(actions()->getLastChild());
+    while (searchList()->lastChild())
+      searchList()->removeChild(searchList()->lastChild());
+    while (menus()->lastChild())
+      menus()->removeChild(menus()->lastChild());
+    while (commands()->lastChild())
+      commands()->removeChild(commands()->lastChild());
+    while (tools()->lastChild())
+      tools()->removeChild(tools()->lastChild());
+    while (actions()->lastChild())
+      actions()->removeChild(actions()->lastChild());
 
     for (KeyItem* keyItem : m_allKeyItems) {
       delete keyItem;
@@ -389,8 +389,8 @@ private:
   }
 
   void fillSearchList(const std::string& search) {
-    while (searchList()->getLastChild())
-      searchList()->removeChild(searchList()->getLastChild());
+    while (searchList()->lastChild())
+      searchList()->removeChild(searchList()->lastChild());
 
     std::vector<std::string> parts;
     base::split_string(base::string_to_lower(search), parts, " ");
@@ -400,10 +400,10 @@ private:
     for (auto listBox : listBoxes) {
       Separator* group = nullptr;
 
-      for (auto item : listBox->getChildren()) {
+      for (auto item : listBox->children()) {
         if (KeyItem* keyItem = dynamic_cast<KeyItem*>(item)) {
           std::string itemText =
-            base::string_to_lower(keyItem->getText());
+            base::string_to_lower(keyItem->text());
           int matches = 0;
 
           for (const auto& part : parts) {
@@ -414,14 +414,14 @@ private:
           if (matches == int(parts.size())) {
             if (!group) {
               group = new Separator(
-                section()->getChildren()[sectionIdx]->getText(), HORIZONTAL);
+                section()->children()[sectionIdx]->text(), HORIZONTAL);
               group->setBgColor(SkinTheme::instance()->colors.background());
 
               searchList()->addChild(group);
             }
 
             KeyItem* copyItem =
-              new KeyItem(keyItem->getText(),
+              new KeyItem(keyItem->text(),
                           keyItem->key(), nullptr, 0);
             searchList()->addChild(copyItem);
           }
@@ -434,7 +434,7 @@ private:
 
   void onSearchChange() {
     base::ScopedValue<bool> flag(m_searchChange, true, false);
-    std::string searchText = search()->getText();
+    std::string searchText = search()->text();
 
     if (searchText.empty())
       section()->selectIndex(0);
@@ -496,14 +496,14 @@ private:
   }
 
   void fillList(ListBox* listbox, Menu* menu, int level) {
-    for (Widget* child : menu->getChildren()) {
+    for (auto child : menu->children()) {
       if (AppMenuItem* menuItem = dynamic_cast<AppMenuItem*>(child)) {
         if (menuItem == AppMenus::instance()->getRecentListMenuitem())
           continue;
 
         KeyItem* keyItem = new KeyItem(
-          menuItem->getText().c_str(),
-          menuItem->getKey(), menuItem, level);
+          menuItem->text().c_str(),
+          menuItem->key(), menuItem, level);
 
         listbox->addChild(keyItem);
 
@@ -538,13 +538,13 @@ void KeyboardShortcutsCommand::onExecute(Context* context)
   KeyboardShortcutsWindow window;
 
   window.setBounds(gfx::Rect(0, 0, ui::display_w()*3/4, ui::display_h()*3/4));
-  g_sep = window.getBounds().w / 2;
+  g_sep = window.bounds().w / 2;
 
   window.centerWindow();
   window.setVisible(true);
   window.openWindowInForeground();
 
-  if (window.getKiller() == window.ok()) {
+  if (window.closer() == window.ok()) {
     // Save keyboard shortcuts in configuration file
     {
       ResourceFinder rf;

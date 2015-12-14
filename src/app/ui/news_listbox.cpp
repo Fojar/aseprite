@@ -22,7 +22,7 @@
 #include "base/time.h"
 #include "ui/link_label.h"
 #include "ui/paint_event.h"
-#include "ui/preferred_size_event.h"
+#include "ui/size_hint_event.h"
 #include "ui/view.h"
 
 #include "tinyxml.h"
@@ -126,43 +126,43 @@ public:
   }
 
 protected:
-  void onPreferredSize(PreferredSizeEvent& ev) override {
-    SkinTheme* theme = static_cast<SkinTheme*>(getTheme());
+  void onSizeHint(SizeHintEvent& ev) override {
+    SkinTheme* theme = static_cast<SkinTheme*>(this->theme());
     Style* style = theme->styles.newsItem();
     Style* styleDetail = theme->styles.newsItemDetail();
     Style::State state;
-    gfx::Size sz1 = style->preferredSize(getText().c_str(), state);
+    gfx::Size sz1 = style->sizeHint(text().c_str(), state);
     gfx::Size sz2, sz2fourlines;
 
     if (!m_desc.empty()) {
-      View* view = View::getView(getParent());
-      sz2 = styleDetail->preferredSize(m_desc.c_str(), state,
-        (view ? view->getViewportBounds().w: 0));
-      sz2fourlines = styleDetail->preferredSize("\n\n\n", state);
+      View* view = View::getView(parent());
+      sz2 = styleDetail->sizeHint(m_desc.c_str(), state,
+        (view ? view->viewportBounds().w: 0));
+      sz2fourlines = styleDetail->sizeHint("\n\n\n", state);
     }
 
-    ev.setPreferredSize(gfx::Size(0, MIN(sz1.h+sz2fourlines.h, sz1.h+sz2.h)));
+    ev.setSizeHint(gfx::Size(0, MIN(sz1.h+sz2fourlines.h, sz1.h+sz2.h)));
   }
 
   void onPaint(PaintEvent& ev) override {
-    SkinTheme* theme = static_cast<SkinTheme*>(getTheme());
-    Graphics* g = ev.getGraphics();
-    gfx::Rect bounds = getClientBounds();
+    SkinTheme* theme = static_cast<SkinTheme*>(this->theme());
+    Graphics* g = ev.graphics();
+    gfx::Rect bounds = clientBounds();
     Style* style = theme->styles.newsItem();
     Style* styleDetail = theme->styles.newsItemDetail();
 
     Style::State state;
-    if (hasMouse() && !getManager()->getCapture()) state += Style::hover();
+    if (hasMouse() && !manager()->getCapture()) state += Style::hover();
     if (isSelected()) state += Style::active();
-    if (getParent()->hasCapture()) state += Style::clicked();
+    if (parent()->hasCapture()) state += Style::clicked();
 
-    gfx::Size textSize = style->preferredSize(getText().c_str(), state);
+    gfx::Size textSize = style->sizeHint(text().c_str(), state);
     gfx::Rect textBounds(bounds.x, bounds.y, bounds.w, textSize.h);
     gfx::Rect detailsBounds(
       bounds.x, bounds.y+textSize.h,
       bounds.w, bounds.h-textSize.h);
 
-    style->paint(g, textBounds, getText().c_str(), state);
+    style->paint(g, textBounds, text().c_str(), state);
     styleDetail->paint(g, detailsBounds, m_desc.c_str(), state);
   }
 
@@ -177,7 +177,7 @@ public:
 
 protected:
   void onClick() override {
-    static_cast<NewsListBox*>(getParent())->reload();
+    static_cast<NewsListBox*>(parent())->reload();
   }
 };
 
@@ -208,8 +208,8 @@ void NewsListBox::reload()
   if (m_loader || m_timer.isRunning())
     return;
 
-  while (getLastChild())
-    removeChild(getLastChild());
+  while (lastChild())
+    removeChild(lastChild());
 
   View* view = View::getView(this);
   if (view)

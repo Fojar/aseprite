@@ -12,23 +12,22 @@
 
 namespace ui {
 
-  class PopupWindow : public Window
-  {
+  class PopupWindow : public Window {
   public:
-    enum ClickBehavior {
-      kDoNothingOnClick,
-      kCloseOnClickInOtherWindow,
-      kCloseOnClickOutsideHotRegion
+    enum class ClickBehavior {
+      DoNothingOnClick,
+      CloseOnClickInOtherWindow,
+      CloseOnClickOutsideHotRegion
     };
 
-    enum EnterBehavior {
-      kDoNothingOnEnter,
-      kCloseOnEnter,
+    enum class EnterBehavior {
+      DoNothingOnEnter,
+      CloseOnEnter,
     };
 
     PopupWindow(const std::string& text,
                 ClickBehavior clickBehavior,
-                EnterBehavior enterBehavior = kCloseOnEnter);
+                EnterBehavior enterBehavior = EnterBehavior::CloseOnEnter);
     ~PopupWindow();
 
     void setHotRegion(const gfx::Region& region);
@@ -38,7 +37,7 @@ namespace ui {
 
   protected:
     bool onProcessMessage(Message* msg) override;
-    void onPreferredSize(PreferredSizeEvent& ev) override;
+    void onSizeHint(SizeHintEvent& ev) override;
     void onPaint(PaintEvent& ev) override;
     void onInitTheme(InitThemeEvent& ev) override;
     void onHitTest(HitTestEvent& ev) override;

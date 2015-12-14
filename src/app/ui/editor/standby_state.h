@@ -65,6 +65,7 @@ namespace app {
       // EditorDecorator overrides
       void preRenderDecorator(EditorPreRender* render) override;
       void postRenderDecorator(EditorPostRender* render) override;
+      void getInvalidDecoratoredRegion(Editor* editor, gfx::Region& region) override;
 
     private:
       TransformHandles* m_transfHandles;
@@ -76,8 +77,8 @@ namespace app {
     void onPivotChange(Editor* editor);
 
     Decorator* m_decorator;
-    ScopedConnection m_pivotVisConn;
-    ScopedConnection m_pivotPosConn;
+    base::ScopedConnection m_pivotVisConn;
+    base::ScopedConnection m_pivotPosConn;
   };
 
 } // namespace app

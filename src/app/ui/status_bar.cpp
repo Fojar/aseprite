@@ -88,14 +88,14 @@ private:
 class StatusBar::SnapToGridWindow : public ui::PopupWindow {
 public:
   SnapToGridWindow()
-    : ui::PopupWindow("", kDoNothingOnClick)
+    : ui::PopupWindow("", ClickBehavior::DoNothingOnClick)
     , m_button("Disable Snap to Grid") {
     setBorder(gfx::Border(2 * guiscale()));
     setBgColor(gfx::rgba(255, 255, 200));
     makeFloating();
 
     addChild(&m_button);
-    m_button.Click.connect(Bind<void>(&SnapToGridWindow::onDisableSnapToGrid, this));
+    m_button.Click.connect(base::Bind<void>(&SnapToGridWindow::onDisableSnapToGrid, this));
   }
 
   void setDocument(app::Document* doc) {
@@ -144,9 +144,9 @@ public:
              scancode == kKeyEnterPad)) {
           Command* cmd = CommandsModule::instance()->getCommandByName(CommandId::GotoFrame);
           Params params;
-          int frame = getTextInt();
+          int frame = textInt();
           if (frame > 0) {
-            params.set("frame", getText().c_str());
+            params.set("frame", text().c_str());
             UIContext::instance()->executeCommand(cmd, params);
           }
           // Select the text again
@@ -177,7 +177,7 @@ StatusBar::StatusBar()
 
   setDoubleBuffered(true);
 
-  SkinTheme* theme = static_cast<SkinTheme*>(this->getTheme());
+  SkinTheme* theme = static_cast<SkinTheme*>(this->theme());
   setBgColor(theme->colors.statusBarFace());
 
   this->setFocusStop(true);
@@ -198,7 +198,7 @@ StatusBar::StatusBar()
     m_frameLabel = new Label("Frame:");
     m_currentFrame = new GotoFrameEntry();
     m_newFrame = new Button("+");
-    m_newFrame->Click.connect(Bind<void>(&StatusBar::newFrame, this));
+    m_newFrame->Click.connect(base::Bind<void>(&StatusBar::newFrame, this));
     m_zoomEntry = new ZoomEntry;
     m_zoomEntry->ZoomChange.connect(&StatusBar::onChangeZoom, this);
 
@@ -224,7 +224,7 @@ StatusBar::StatusBar()
   tooltipManager->addTooltipFor(m_zoomEntry, "Zoom Level", BOTTOM);
 
   Preferences::instance().toolBox.activeTool.AfterChange.connect(
-    Bind<void>(&StatusBar::onCurrentToolChange, this));
+    base::Bind<void>(&StatusBar::onCurrentToolChange, this));
 
   UIContext::instance()->addObserver(this);
   UIContext::instance()->documents().addObserver(this);
@@ -308,8 +308,8 @@ void StatusBar::showTip(int msecs, const char *format, ...)
   m_tipwindow->openWindow();
   m_tipwindow->remapWindow();
 
-  x = getBounds().x2() - m_tipwindow->getBounds().w;
-  y = getBounds().y - m_tipwindow->getBounds().h;
+  x = bounds().x2() - m_tipwindow->bounds().w;
+  y = bounds().y - m_tipwindow->bounds().h;
   m_tipwindow->positionWindow(x, y);
 
   m_tipwindow->startTimer();
@@ -365,12 +365,12 @@ void StatusBar::showSnapToGridWarning(bool state)
       m_snapToGridWindow->openWindow();
       m_snapToGridWindow->remapWindow();
 
-      Rect rc = getBounds();
-      int toolBarWidth = ToolBar::instance()->getPreferredSize().w;
+      Rect rc = bounds();
+      int toolBarWidth = ToolBar::instance()->sizeHint().w;
 
       m_snapToGridWindow->positionWindow(
-        rc.x+rc.w-toolBarWidth-m_snapToGridWindow->getBounds().w,
-        rc.y-m_snapToGridWindow->getBounds().h);
+        rc.x+rc.w-toolBarWidth-m_snapToGridWindow->bounds().w,
+        rc.y-m_snapToGridWindow->bounds().h);
     }
 
     m_snapToGridWindow->setDocument(
@@ -387,14 +387,14 @@ void StatusBar::showSnapToGridWarning(bool state)
 
 void StatusBar::onResize(ResizeEvent& ev)
 {
-  setBoundsQuietly(ev.getBounds());
+  setBoundsQuietly(ev.bounds());
 
   Border border = this->border();
-  Rect rc = ev.getBounds();
+  Rect rc = ev.bounds();
   bool docControls = (rc.w > 300*ui::guiscale());
   if (docControls) {
-    int prefWidth = m_docControls->getPreferredSize().w;
-    int toolBarWidth = ToolBar::instance()->getPreferredSize().w;
+    int prefWidth = m_docControls->sizeHint().w;
+    int toolBarWidth = ToolBar::instance()->sizeHint().w;
 
     rc.x += rc.w - prefWidth - border.right() - toolBarWidth;
     rc.w = prefWidth;
@@ -406,20 +406,20 @@ void StatusBar::onResize(ResizeEvent& ev)
     m_docControls->setVisible(false);
 }
 
-void StatusBar::onPreferredSize(PreferredSizeEvent& ev)
+void StatusBar::onSizeHint(SizeHintEvent& ev)
 {
-  int s = 4*guiscale() + getTextHeight() + 4*guiscale();
-  ev.setPreferredSize(Size(s, s));
+  int s = 4*guiscale() + textHeight() + 4*guiscale();
+  ev.setSizeHint(Size(s, s));
 }
 
 void StatusBar::onPaint(ui::PaintEvent& ev)
 {
-  SkinTheme* theme = static_cast<SkinTheme*>(this->getTheme());
+  SkinTheme* theme = static_cast<SkinTheme*>(this->theme());
   gfx::Color textColor = theme->colors.statusBarText();
-  Rect rc = getClientBounds();
-  Graphics* g = ev.getGraphics();
+  Rect rc = clientBounds();
+  Graphics* g = ev.graphics();
 
-  g->fillRect(getBgColor(), rc);
+  g->fillRect(bgColor(), rc);
 
   rc.shrink(Border(2, 1, 2, 2)*guiscale());
 
@@ -450,9 +450,9 @@ void StatusBar::onPaint(ui::PaintEvent& ev)
     }
 
     g->drawString(str, textColor, ColorNone,
-      gfx::Point(x, rc.y + rc.h/2 - getFont()->height()/2));
+      gfx::Point(x, rc.y + rc.h/2 - font()->height()/2));
 
-    x += getFont()->textLength(str.c_str()) + 4*guiscale();
+    x += font()->textLength(str.c_str()) + 4*guiscale();
   }
 
   // Show tool
@@ -466,11 +466,11 @@ void StatusBar::onPaint(ui::PaintEvent& ev)
   }
 
   // Status bar text
-  if (getTextLength() > 0) {
-    g->drawString(getText(), textColor, ColorNone,
-      gfx::Point(x, rc.y + rc.h/2 - getFont()->height()/2));
+  if (textLength() > 0) {
+    g->drawString(text(), textColor, ColorNone,
+      gfx::Point(x, rc.y + rc.h/2 - font()->height()/2));
 
-    x += getFont()->textLength(getText().c_str()) + 4*guiscale();
+    x += font()->textLength(text().c_str()) + 4*guiscale();
   }
 }
 

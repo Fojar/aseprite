@@ -88,16 +88,16 @@ MovingPixelsState::MovingPixelsState(Editor* editor, MouseMessage* msg, PixelsMo
   // Listen to any change to the transparent color from the ContextBar.
   m_opaqueConn =
     Preferences::instance().selection.opaque.AfterChange.connect(
-      Bind<void>(&MovingPixelsState::onTransparentColorChange, this));
+      base::Bind<void>(&MovingPixelsState::onTransparentColorChange, this));
   m_transparentConn =
     Preferences::instance().selection.transparentColor.AfterChange.connect(
-      Bind<void>(&MovingPixelsState::onTransparentColorChange, this));
+      base::Bind<void>(&MovingPixelsState::onTransparentColorChange, this));
 
   // Add the current editor as filter for key message of the manager
   // so we can catch the Enter key, and avoid to execute the
   // PlayAnimation command.
-  m_editor->getManager()->addMessageFilter(kKeyDownMessage, m_editor);
-  m_editor->getManager()->addMessageFilter(kKeyUpMessage, m_editor);
+  m_editor->manager()->addMessageFilter(kKeyDownMessage, m_editor);
+  m_editor->manager()->addMessageFilter(kKeyUpMessage, m_editor);
   m_editor->addObserver(this);
   m_observingEditor = true;
 
@@ -115,8 +115,8 @@ MovingPixelsState::~MovingPixelsState()
   m_pixelsMovement.reset(NULL);
 
   removeAsEditorObserver();
-  m_editor->getManager()->removeMessageFilter(kKeyDownMessage, m_editor);
-  m_editor->getManager()->removeMessageFilter(kKeyUpMessage, m_editor);
+  m_editor->manager()->removeMessageFilter(kKeyDownMessage, m_editor);
+  m_editor->manager()->removeMessageFilter(kKeyUpMessage, m_editor);
 
   m_editor->document()->generateMaskBoundaries();
 }

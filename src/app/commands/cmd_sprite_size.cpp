@@ -159,11 +159,11 @@ protected:
 class SpriteSizeWindow : public app::gen::SpriteSize {
 public:
   SpriteSizeWindow(Context* ctx, int new_width, int new_height) : m_ctx(ctx) {
-    lockRatio()->Click.connect(Bind<void>(&SpriteSizeWindow::onLockRatioClick, this));
-    widthPx()->Change.connect(Bind<void>(&SpriteSizeWindow::onWidthPxChange, this));
-    heightPx()->Change.connect(Bind<void>(&SpriteSizeWindow::onHeightPxChange, this));
-    widthPerc()->Change.connect(Bind<void>(&SpriteSizeWindow::onWidthPercChange, this));
-    heightPerc()->Change.connect(Bind<void>(&SpriteSizeWindow::onHeightPercChange, this));
+    lockRatio()->Click.connect(base::Bind<void>(&SpriteSizeWindow::onLockRatioClick, this));
+    widthPx()->Change.connect(base::Bind<void>(&SpriteSizeWindow::onWidthPxChange, this));
+    heightPx()->Change.connect(base::Bind<void>(&SpriteSizeWindow::onHeightPxChange, this));
+    widthPerc()->Change.connect(base::Bind<void>(&SpriteSizeWindow::onWidthPercChange, this));
+    heightPerc()->Change.connect(base::Bind<void>(&SpriteSizeWindow::onHeightPercChange, this));
 
     widthPx()->setTextf("%d", new_width);
     heightPx()->setTextf("%d", new_height);
@@ -184,7 +184,7 @@ private:
   void onWidthPxChange() {
     const ContextReader reader(m_ctx);
     const Sprite* sprite(reader.sprite());
-    int width = widthPx()->getTextInt();
+    int width = widthPx()->textInt();
     double perc = 100.0 * width / sprite->width();
 
     widthPerc()->setTextf(PERC_FORMAT, perc);
@@ -198,7 +198,7 @@ private:
   void onHeightPxChange() {
     const ContextReader reader(m_ctx);
     const Sprite* sprite(reader.sprite());
-    int height = heightPx()->getTextInt();
+    int height = heightPx()->textInt();
     double perc = 100.0 * height / sprite->height();
 
     heightPerc()->setTextf(PERC_FORMAT, perc);
@@ -212,26 +212,26 @@ private:
   void onWidthPercChange() {
     const ContextReader reader(m_ctx);
     const Sprite* sprite(reader.sprite());
-    double width = widthPerc()->getTextDouble();
+    double width = widthPerc()->textDouble();
 
     widthPx()->setTextf("%d", (int)(sprite->width() * width / 100));
 
     if (lockRatio()->isSelected()) {
       heightPx()->setTextf("%d", (int)(sprite->height() * width / 100));
-      heightPerc()->setText(widthPerc()->getText());
+      heightPerc()->setText(widthPerc()->text());
     }
   }
 
   void onHeightPercChange() {
     const ContextReader reader(m_ctx);
     const Sprite* sprite(reader.sprite());
-    double height = heightPerc()->getTextDouble();
+    double height = heightPerc()->textDouble();
 
     heightPx()->setTextf("%d", (int)(sprite->height() * height / 100));
 
     if (lockRatio()->isSelected()) {
       widthPx()->setTextf("%d", (int)(sprite->width() * height / 100));
-      widthPerc()->setText(heightPerc()->getText());
+      widthPerc()->setText(heightPerc()->text());
     }
   }
 
@@ -310,11 +310,11 @@ void SpriteSizeCommand::onExecute(Context* context)
     window.openWindowInForeground();
     save_window_pos(&window, "SpriteSize");
 
-    if (window.getKiller() != window.ok())
+    if (window.closer() != window.ok())
       return;
 
-    new_width = window.widthPx()->getTextInt();
-    new_height = window.heightPx()->getTextInt();
+    new_width = window.widthPx()->textInt();
+    new_height = window.heightPx()->textInt();
     resize_method = (ResizeMethod)window.method()->getSelectedItemIndex();
 
     set_config_int("SpriteSize", "Method", resize_method);

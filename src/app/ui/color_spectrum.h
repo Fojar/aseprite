@@ -25,10 +25,10 @@ namespace app {
     void selectColor(const app::Color& color);
 
     // Signals
-    Signal2<void, const app::Color&, ui::MouseButtons> ColorChange;
+    base::Signal2<void, const app::Color&, ui::MouseButtons> ColorChange;
 
   protected:
-    void onPreferredSize(ui::PreferredSizeEvent& ev) override;
+    void onSizeHint(ui::SizeHintEvent& ev) override;
     void onResize(ui::ResizeEvent& ev) override;
     void onPaint(ui::PaintEvent& ev) override;
     bool onProcessMessage(ui::Message* msg) override;

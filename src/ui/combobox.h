@@ -85,14 +85,14 @@ namespace ui {
     gfx::Rect getListBoxPos() const;
 
     // Signals
-    Signal0<void> Change;
-    Signal0<void> OpenListBox;
-    Signal0<void> CloseListBox;
+    base::Signal0<void> Change;
+    base::Signal0<void> OpenListBox;
+    base::Signal0<void> CloseListBox;
 
   protected:
     bool onProcessMessage(Message* msg) override;
     void onResize(ResizeEvent& ev) override;
-    void onPreferredSize(PreferredSizeEvent& ev) override;
+    void onSizeHint(SizeHintEvent& ev) override;
     virtual void onChange();
     virtual void onOpenListBox();
     virtual void onCloseListBox();

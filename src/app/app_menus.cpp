@@ -49,7 +49,7 @@ AppMenus* AppMenus::instance()
   static AppMenus* instance = NULL;
   if (!instance) {
     instance = new AppMenus;
-    App::instance()->Exit.connect(Bind<void>(&destroy_instance, instance));
+    App::instance()->Exit.connect(base::Bind<void>(&destroy_instance, instance));
   }
   return instance;
 }
@@ -59,7 +59,7 @@ AppMenus::AppMenus()
 {
   m_recentFilesConn =
     App::instance()->getRecentFiles()->Changed.connect(
-      Bind(&AppMenus::rebuildRecentList, this));
+      base::Bind(&AppMenus::rebuildRecentList, this));
 }
 
 void AppMenus::reload()
@@ -297,9 +297,7 @@ void AppMenus::applyShortcutToMenuitemsWithCommand(Command* command, const Param
 
 void AppMenus::applyShortcutToMenuitemsWithCommand(Menu* menu, Command* command, const Params& params, Key* key)
 {
-  UI_FOREACH_WIDGET(menu->getChildren(), it) {
-    Widget* child = *it;
-
+  for (auto child : menu->children()) {
     if (child->type() == kMenuItemWidget) {
       AppMenuItem* menuitem = dynamic_cast<AppMenuItem*>(child);
       if (!menuitem)

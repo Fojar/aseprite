@@ -44,13 +44,13 @@ HomeView::HomeView()
   , m_dataRecovery(nullptr)
   , m_dataRecoveryView(nullptr)
 {
-  SkinTheme* theme = static_cast<SkinTheme*>(getTheme());
+  SkinTheme* theme = static_cast<SkinTheme*>(this->theme());
   setBgColor(theme->colors.workspace());
   setChildSpacing(8 * guiscale());
 
-  newFile()->Click.connect(Bind(&HomeView::onNewFile, this));
-  openFile()->Click.connect(Bind(&HomeView::onOpenFile, this));
-  recoverSprites()->Click.connect(Bind(&HomeView::onRecoverSprites, this));
+  newFile()->Click.connect(base::Bind(&HomeView::onNewFile, this));
+  openFile()->Click.connect(base::Bind(&HomeView::onOpenFile, this));
+  recoverSprites()->Click.connect(base::Bind(&HomeView::onRecoverSprites, this));
 
   filesView()->attachToView(m_files);
   foldersView()->attachToView(m_folders);
@@ -64,7 +64,7 @@ HomeView::~HomeView()
 {
 #ifdef ENABLE_DATA_RECOVERY
   if (m_dataRecoveryView) {
-    if (m_dataRecoveryView->getParent())
+    if (m_dataRecoveryView->parent())
       App::instance()->getMainWindow()->getWorkspace()->removeView(m_dataRecoveryView);
     delete m_dataRecoveryView;
   }
@@ -122,9 +122,9 @@ void HomeView::onOpenFile()
 
 void HomeView::onResize(ui::ResizeEvent& ev)
 {
-  headerPlaceholder()->setVisible(ev.getBounds().h > 200*ui::guiscale());
-  foldersPlaceholder()->setVisible(ev.getBounds().h > 150*ui::guiscale());
-  newsPlaceholder()->setVisible(ev.getBounds().w > 200*ui::guiscale());
+  headerPlaceholder()->setVisible(ev.bounds().h > 200*ui::guiscale());
+  foldersPlaceholder()->setVisible(ev.bounds().h > 150*ui::guiscale());
+  newsPlaceholder()->setVisible(ev.bounds().w > 200*ui::guiscale());
 
   ui::VBox::onResize(ev);
 }
@@ -149,7 +149,7 @@ void HomeView::onUpToDate()
 
 void HomeView::onNewUpdate(const std::string& url, const std::string& version)
 {
-  SkinTheme* theme = static_cast<SkinTheme*>(getTheme());
+  SkinTheme* theme = static_cast<SkinTheme*>(this->theme());
 
   checkUpdate()->setText("New " PACKAGE " v" + version + " available!");
   checkUpdate()->setUrl(url);
@@ -157,7 +157,7 @@ void HomeView::onNewUpdate(const std::string& url, const std::string& version)
     SkinStylePropertyPtr(new SkinStyleProperty(theme->styles.workspaceUpdateLink())));
 
   // TODO this should be in a skin.xml's <style>
-  gfx::Size iconSize = theme->styles.workspaceUpdateLink()->preferredSize(
+  gfx::Size iconSize = theme->styles.workspaceUpdateLink()->sizeHint(
     nullptr, Style::State());
   checkUpdate()->setBorder(gfx::Border(6*guiscale())+gfx::Border(
       0, 0, iconSize.w, 0));
@@ -184,7 +184,7 @@ void HomeView::onRecoverSprites()
       });
   }
 
-  if (!m_dataRecoveryView->getParent())
+  if (!m_dataRecoveryView->parent())
     App::instance()->getMainWindow()->getWorkspace()->addView(m_dataRecoveryView);
 
   App::instance()->getMainWindow()->getTabsBar()->selectTab(m_dataRecoveryView);

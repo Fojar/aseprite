@@ -61,10 +61,10 @@ void NewLayerSetCommand::onExecute(Context* context)
 
   window->openWindowInForeground();
 
-  if (window->getKiller() != window->findChild("ok"))
+  if (window->closer() != window->findChild("ok"))
     return;
 
-  std::string name = window->findChild("name")->getText();
+  std::string name = window->findChild("name")->text();
   Layer* layer;
   {
     Transaction transaction(writer.context(), "New Layer");

@@ -49,9 +49,12 @@ public:
   CanvasSizeWindow()
     : m_editor(current_editor)
     , m_rect(0, 0, current_editor->sprite()->width(), current_editor->sprite()->height())
-    , m_selectBoxState(new SelectBoxState(this, m_rect,
-        SelectBoxState::RULERS |
-        SelectBoxState::DARKOUTSIDE)) {
+    , m_selectBoxState(
+      new SelectBoxState(
+        this, m_rect,
+        SelectBoxState::Flags(
+          int(SelectBoxState::Flags::Rulers) |
+          int(SelectBoxState::Flags::DarkOutside)))) {
     setWidth(m_rect.w);
     setHeight(m_rect.h);
     setLeft(0);
@@ -59,13 +62,13 @@ public:
     setTop(0);
     setBottom(0);
 
-    width() ->Change.connect(Bind<void>(&CanvasSizeWindow::onSizeChange, this));
-    height()->Change.connect(Bind<void>(&CanvasSizeWindow::onSizeChange, this));
-    dir()   ->ItemChange.connect(Bind<void>(&CanvasSizeWindow::onDirChange, this));;
-    left()  ->Change.connect(Bind<void>(&CanvasSizeWindow::onBorderChange, this));
-    right() ->Change.connect(Bind<void>(&CanvasSizeWindow::onBorderChange, this));
-    top()   ->Change.connect(Bind<void>(&CanvasSizeWindow::onBorderChange, this));
-    bottom()->Change.connect(Bind<void>(&CanvasSizeWindow::onBorderChange, this));
+    width() ->Change.connect(base::Bind<void>(&CanvasSizeWindow::onSizeChange, this));
+    height()->Change.connect(base::Bind<void>(&CanvasSizeWindow::onSizeChange, this));
+    dir()   ->ItemChange.connect(base::Bind<void>(&CanvasSizeWindow::onDirChange, this));;
+    left()  ->Change.connect(base::Bind<void>(&CanvasSizeWindow::onBorderChange, this));
+    right() ->Change.connect(base::Bind<void>(&CanvasSizeWindow::onBorderChange, this));
+    top()   ->Change.connect(base::Bind<void>(&CanvasSizeWindow::onBorderChange, this));
+    bottom()->Change.connect(base::Bind<void>(&CanvasSizeWindow::onBorderChange, this));
 
     m_editor->setState(m_selectBoxState);
 
@@ -77,14 +80,14 @@ public:
     m_editor->backToPreviousState();
   }
 
-  bool pressedOk() { return getKiller() == ok(); }
+  bool pressedOk() { return closer() == ok(); }
 
-  int getWidth()  { return width()->getTextInt(); }
-  int getHeight() { return height()->getTextInt(); }
-  int getLeft()   { return left()->getTextInt(); }
-  int getRight()  { return right()->getTextInt(); }
-  int getTop()    { return top()->getTextInt(); }
-  int getBottom() { return bottom()->getTextInt(); }
+  int getWidth()  { return width()->textInt(); }
+  int getHeight() { return height()->textInt(); }
+  int getLeft()   { return left()->textInt(); }
+  int getRight()  { return right()->textInt(); }
+  int getTop()    { return top()->textInt(); }
+  int getBottom() { return bottom()->textInt(); }
 
 protected:
 
@@ -211,7 +214,7 @@ private:
   }
 
   void updateIcons() {
-    SkinTheme* theme = static_cast<SkinTheme*>(getTheme());
+    SkinTheme* theme = static_cast<SkinTheme*>(this->theme());
 
     int sel = dir()->selectedItem();
 

@@ -12,8 +12,7 @@
 
 namespace ui {
 
-  class Viewport : public Widget
-  {
+  class Viewport : public Widget {
   public:
     Viewport();
 
@@ -22,7 +21,7 @@ namespace ui {
   protected:
     // Events
     void onResize(ResizeEvent& ev) override;
-    void onPreferredSize(PreferredSizeEvent& ev) override;
+    void onSizeHint(SizeHintEvent& ev) override;
     void onPaint(PaintEvent& ev) override;
   };
 

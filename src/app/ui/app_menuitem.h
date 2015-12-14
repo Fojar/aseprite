@@ -25,7 +25,7 @@ namespace app {
   public:
     AppMenuItem(const char* text, Command* command = nullptr, const Params& params = Params());
 
-    Key* getKey() { return m_key; }
+    Key* key() { return m_key; }
     void setKey(Key* key) { m_key = key; }
 
     Command* getCommand() { return m_command; }
@@ -35,7 +35,7 @@ namespace app {
 
   protected:
     bool onProcessMessage(ui::Message* msg) override;
-    void onPreferredSize(ui::PreferredSizeEvent& ev) override;
+    void onSizeHint(ui::SizeHintEvent& ev) override;
     void onClick() override;
 
   private:

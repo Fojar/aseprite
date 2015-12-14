@@ -96,10 +96,10 @@ void NewLayerCommand::onExecute(Context* context)
 
     window->openWindowInForeground();
 
-    if (window->getKiller() != window->findChild("ok"))
+    if (window->closer() != window->findChild("ok"))
       return;
 
-    name = window->findChild("name")->getText();
+    name = window->findChild("name")->text();
   }
 
   Layer* activeLayer = writer.layer();

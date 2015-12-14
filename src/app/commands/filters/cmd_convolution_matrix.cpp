@@ -61,7 +61,7 @@ public:
     getContainer()->addChild(m_controlsWidget);
 
     m_reloadButton->Click.connect(&ConvolutionMatrixWindow::onReloadStock, this);
-    m_stockListBox->Change.connect(Bind<void>(&ConvolutionMatrixWindow::onMatrixChange, this));
+    m_stockListBox->Change.connect(base::Bind<void>(&ConvolutionMatrixWindow::onMatrixChange, this));
 
     fillStockListBox();
   }
@@ -83,8 +83,8 @@ private:
     const char* oldSelected = (m_filter.getMatrix() ? m_filter.getMatrix()->getName(): NULL);
 
     // Clean the list
-    while (!m_stockListBox->getChildren().empty()) {
-      Widget* listitem = m_stockListBox->getChildren().front();
+    while (!m_stockListBox->children().empty()) {
+      Widget* listitem = m_stockListBox->children().front();
       m_stockListBox->removeChild(listitem);
       delete listitem;
     }
@@ -101,13 +101,11 @@ private:
 
   void selectMatrixByName(const char* oldSelected)
   {
-    Widget* select_this = UI_FIRST_WIDGET(m_stockListBox->getChildren());
+    Widget* select_this = UI_FIRST_WIDGET(m_stockListBox->children());
 
     if (oldSelected) {
-      UI_FOREACH_WIDGET(m_stockListBox->getChildren(), it) {
-        Widget* child = *it;
-
-        if (child->getText() == oldSelected) {
+      for (auto child : m_stockListBox->children()) {
+        if (child->text() == oldSelected) {
           select_this = child;
           break;
         }
@@ -125,7 +123,7 @@ private:
   void onMatrixChange()
   {
     Widget* selected = m_stockListBox->getSelectedChild();
-    base::SharedPtr<ConvolutionMatrix> matrix = m_stock.getByName(selected->getText().c_str());
+    base::SharedPtr<ConvolutionMatrix> matrix = m_stock.getByName(selected->text().c_str());
     Target newTarget = matrix->getDefaultTarget();
 
     m_filter.setMatrix(matrix);

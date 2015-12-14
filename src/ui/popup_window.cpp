@@ -11,7 +11,7 @@
 #include "gfx/size.h"
 #include "ui/graphics.h"
 #include "ui/intern.h"
-#include "ui/preferred_size_event.h"
+#include "ui/size_hint_event.h"
 #include "ui/theme.h"
 #include "ui/ui.h"
 
@@ -97,7 +97,7 @@ bool PopupWindow::onProcessMessage(Message* msg)
         if (scancode == kKeyEsc)
           closeWindow(nullptr);
 
-        if (m_enterBehavior == kCloseOnEnter &&
+        if (m_enterBehavior == EnterBehavior::CloseOnEnter &&
             (scancode == kKeyEnter ||
              scancode == kKeyEnterPad)) {
           closeWindow(this);
@@ -114,15 +114,15 @@ bool PopupWindow::onProcessMessage(Message* msg)
 
           // If the user click outside the window, we have to close
           // the tooltip window.
-          case kCloseOnClickInOtherWindow: {
+          case ClickBehavior::CloseOnClickInOtherWindow: {
             Widget* picked = pick(mousePos);
-            if (!picked || picked->getRoot() != this) {
+            if (!picked || picked->window() != this) {
               closeWindow(NULL);
             }
             break;
           }
 
-          case kCloseOnClickOutsideHotRegion:
+          case ClickBehavior::CloseOnClickOutsideHotRegion:
             if (!m_hotRegion.contains(mousePos)) {
               closeWindow(NULL);
             }
@@ -134,7 +134,7 @@ bool PopupWindow::onProcessMessage(Message* msg)
     case kMouseMoveMessage:
       if (!isMoveable() &&
           !m_hotRegion.isEmpty() &&
-          getManager()->getCapture() == NULL) {
+          manager()->getCapture() == NULL) {
         gfx::Point mousePos = static_cast<MouseMessage*>(msg)->position();
 
         // If the mouse is outside the hot-region we have to close the
@@ -149,28 +149,26 @@ bool PopupWindow::onProcessMessage(Message* msg)
   return Window::onProcessMessage(msg);
 }
 
-void PopupWindow::onPreferredSize(PreferredSizeEvent& ev)
+void PopupWindow::onSizeHint(SizeHintEvent& ev)
 {
   ScreenGraphics g;
-  g.setFont(getFont());
+  g.setFont(font());
   Size resultSize(0, 0);
 
   if (hasText())
-    resultSize = g.fitString(getText(),
-                             (getClientBounds() - border()).w,
-                             getAlign());
+    resultSize = g.fitString(text(),
+                             (clientBounds() - border()).w,
+                             align());
 
   resultSize.w += border().width();
   resultSize.h += border().height();
 
-  if (!getChildren().empty()) {
+  if (!children().empty()) {
     Size maxSize(0, 0);
     Size reqSize;
 
-    UI_FOREACH_WIDGET(getChildren(), it) {
-      Widget* child = *it;
-
-      reqSize = child->getPreferredSize();
+    for (auto child : children()) {
+      reqSize = child->sizeHint();
 
       maxSize.w = MAX(maxSize.w, reqSize.w);
       maxSize.h = MAX(maxSize.h, reqSize.h);
@@ -180,12 +178,12 @@ void PopupWindow::onPreferredSize(PreferredSizeEvent& ev)
     resultSize.h += maxSize.h;
   }
 
-  ev.setPreferredSize(resultSize);
+  ev.setSizeHint(resultSize);
 }
 
 void PopupWindow::onPaint(PaintEvent& ev)
 {
-  getTheme()->paintPopupWindow(ev);
+  theme()->paintPopupWindow(ev);
 }
 
 void PopupWindow::onInitTheme(InitThemeEvent& ev)
@@ -197,7 +195,7 @@ void PopupWindow::onInitTheme(InitThemeEvent& ev)
 
 void PopupWindow::onHitTest(HitTestEvent& ev)
 {
-  Widget* picked = getManager()->pick(ev.getPoint());
+  Widget* picked = manager()->pick(ev.point());
   if (picked) {
     WidgetType type = picked->type();
     if ((type == kWindowWidget && picked == this) ||

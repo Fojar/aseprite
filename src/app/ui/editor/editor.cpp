@@ -113,7 +113,7 @@ public:
     gfx::Point b(x2, y2);
     a = m_editor->editorToScreen(a);
     b = m_editor->editorToScreen(b);
-    gfx::Rect bounds = m_editor->getBounds();
+    gfx::Rect bounds = m_editor->bounds();
     a.x -= bounds.x;
     a.y -= bounds.y;
     b.x -= bounds.x;
@@ -123,7 +123,7 @@ public:
 
   void drawRectXor(const gfx::Rect& rc) override {
     gfx::Rect rc2 = m_editor->editorToScreen(rc);
-    gfx::Rect bounds = m_editor->getBounds();
+    gfx::Rect bounds = m_editor->bounds();
     rc2.x -= bounds.x;
     rc2.y -= bounds.y;
 
@@ -172,15 +172,15 @@ Editor::Editor(Document* document, EditorFlags flags)
 
   m_currentToolChangeConn =
     Preferences::instance().toolBox.activeTool.AfterChange.connect(
-      Bind<void>(&Editor::onCurrentToolChange, this));
+      base::Bind<void>(&Editor::onCurrentToolChange, this));
 
   m_fgColorChangeConn =
     Preferences::instance().colorBar.fgColor.AfterChange.connect(
-      Bind<void>(&Editor::onFgColorChange, this));
+      base::Bind<void>(&Editor::onFgColorChange, this));
 
   m_contextBarBrushChangeConn =
     App::instance()->getMainWindow()->getContextBar()->BrushChange.connect(
-      Bind<void>(&Editor::onContextBarBrushChange, this));
+      base::Bind<void>(&Editor::onContextBarBrushChange, this));
 
   DocumentPreferences& docPref = Preferences::instance().document(m_document);
 
@@ -192,10 +192,10 @@ Editor::Editor(Document* document, EditorFlags flags)
   if (preferredLayer)
     setLayer(preferredLayer);
 
-  m_tiledConn = docPref.tiled.AfterChange.connect(Bind<void>(&Editor::invalidate, this));
-  m_gridConn = docPref.grid.AfterChange.connect(Bind<void>(&Editor::invalidate, this));
-  m_pixelGridConn = docPref.pixelGrid.AfterChange.connect(Bind<void>(&Editor::invalidate, this));
-  m_onionskinConn = docPref.onionskin.AfterChange.connect(Bind<void>(&Editor::invalidate, this));
+  m_tiledConn = docPref.tiled.AfterChange.connect(base::Bind<void>(&Editor::invalidate, this));
+  m_gridConn = docPref.grid.AfterChange.connect(base::Bind<void>(&Editor::invalidate, this));
+  m_pixelGridConn = docPref.pixelGrid.AfterChange.connect(base::Bind<void>(&Editor::invalidate, this));
+  m_onionskinConn = docPref.onionskin.AfterChange.connect(base::Bind<void>(&Editor::invalidate, this));
 
   m_document->addObserver(this);
 
@@ -347,7 +347,7 @@ Site Editor::getSite() const
 void Editor::setDefaultScroll()
 {
   View* view = View::getView(this);
-  Rect vp = view->getViewportBounds();
+  Rect vp = view->viewportBounds();
 
   setEditorScroll(
     gfx::Point(
@@ -362,14 +362,24 @@ void Editor::setEditorScroll(const gfx::Point& scroll, bool blitValidRegion)
   View* view = View::getView(this);
   Point oldScroll;
   Region region;
+  Region invalidRegion;
 
   if (blitValidRegion) {
     getDrawableRegion(region, kCutTopWindows);
-    oldScroll = view->getViewScroll();
+    oldScroll = view->viewScroll();
+
+    // Remove decorated region that cannot be just moved because it
+    // must be redrawn in another position when the Editor's scroll
+    // changes (e.g. symmetry handles).
+    if ((m_flags & kShowDecorators) && m_decorator) {
+      m_decorator->getInvalidDecoratoredRegion(this, invalidRegion);
+      if (!invalidRegion.isEmpty())
+        region.createSubtraction(region, invalidRegion);
+    }
   }
 
   view->setViewScroll(scroll);
-  Point newScroll = view->getViewScroll();
+  Point newScroll = view->viewScroll();
 
   if (blitValidRegion) {
     // Move screen with blits
@@ -538,7 +548,7 @@ void Editor::drawSpriteUnclippedRect(ui::Graphics* g, const gfx::Rect& _rc)
   if (m_zoom.scale() < 1.0)
     rc.inflate(int(1./m_zoom.scale()), int(1./m_zoom.scale()));
 
-  gfx::Rect client = getClientBounds();
+  gfx::Rect client = clientBounds();
   gfx::Rect spriteRect(
     client.x + m_padding.x,
     client.y + m_padding.y,
@@ -586,7 +596,7 @@ void Editor::drawSpriteUnclippedRect(ui::Graphics* g, const gfx::Rect& _rc)
 
   // Fill the outside (parts of the editor that aren't covered by the
   // sprite).
-  SkinTheme* theme = static_cast<SkinTheme*>(this->getTheme());
+  SkinTheme* theme = static_cast<SkinTheme*>(this->theme());
   if (m_flags & kShowOutside) {
     g->fillRegion(theme->colors.editorFace(), outside);
   }
@@ -594,7 +604,7 @@ void Editor::drawSpriteUnclippedRect(ui::Graphics* g, const gfx::Rect& _rc)
   // Grids
   {
     // Clipping
-    gfx::Rect cliprc = editorToScreen(rc).offset(-getBounds().getOrigin());
+    gfx::Rect cliprc = editorToScreen(rc).offset(-bounds().origin());
     cliprc = cliprc.createIntersection(spriteRect);
     if (!cliprc.isEmpty()) {
       IntersectClip clip(g, cliprc);
@@ -692,7 +702,7 @@ void Editor::drawSpriteClipped(const gfx::Region& updateRegion)
   getDrawableRegion(screenRegion, kCutTopWindows);
 
   ScreenGraphics screenGraphics;
-  GraphicsPtr editorGraphics = getGraphics(getClientBounds());
+  GraphicsPtr editorGraphics = getGraphics(clientBounds());
 
   for (const Rect& updateRect : updateRegion) {
     for (const Rect& screenRect : screenRegion) {
@@ -747,10 +757,10 @@ void Editor::drawMaskSafe()
       m_document->getMaskBoundaries()) {
     Region region;
     getDrawableRegion(region, kCutTopWindows);
-    region.offset(-getBounds().getOrigin());
+    region.offset(-bounds().origin());
 
     HideBrushPreview hide(m_brushPreview);
-    GraphicsPtr g = getGraphics(getClientBounds());
+    GraphicsPtr g = getGraphics(clientBounds());
 
     for (const gfx::Rect& rc : region) {
       IntersectClip clip(g.get(), rc);
@@ -786,8 +796,8 @@ void Editor::drawGrid(Graphics* g, const gfx::Rect& spriteBounds, const Rect& gr
     return;
 
   // Adjust for client area
-  gfx::Rect bounds = getBounds();
-  grid.offset(-bounds.getOrigin());
+  gfx::Rect bounds = this->bounds();
+  grid.offset(-bounds.origin());
 
   while (grid.x-grid.w >= spriteBounds.x) grid.x -= grid.w;
   while (grid.y-grid.h >= spriteBounds.y) grid.y -= grid.h;
@@ -842,7 +852,7 @@ void Editor::flashCurrentLayer()
       m_document->setExtraCel(extraCel);
       drawSpriteClipped(gfx::Region(
                           gfx::Rect(0, 0, m_sprite->width(), m_sprite->height())));
-      getManager()->flipDisplay();
+      manager()->flipDisplay();
       m_document->setExtraCel(oldExtraCel);
     }
 
@@ -855,7 +865,7 @@ gfx::Point Editor::autoScroll(MouseMessage* msg, AutoScroll dir, bool blitValidR
   // // Hide the brush preview
   // HideBrushPreview hide(editor->brushPreview());
   View* view = View::getView(this);
-  gfx::Rect vp = view->getViewportBounds();
+  gfx::Rect vp = view->viewportBounds();
   gfx::Point mousePos = msg->position();
 
   if (!vp.contains(mousePos)) {
@@ -872,7 +882,7 @@ gfx::Point Editor::autoScroll(MouseMessage* msg, AutoScroll dir, bool blitValidR
       delta.y = 0;
     }
 
-    gfx::Point scroll = view->getViewScroll();
+    gfx::Point scroll = view->viewScroll();
     if (dir == AutoScroll::MouseDir) {
       scroll += delta;
     }
@@ -1013,8 +1023,8 @@ tools::Ink* Editor::getCurrentEditorInk()
 gfx::Point Editor::screenToEditor(const gfx::Point& pt)
 {
   View* view = View::getView(this);
-  Rect vp = view->getViewportBounds();
-  Point scroll = view->getViewScroll();
+  Rect vp = view->viewportBounds();
+  Point scroll = view->viewScroll();
 
   return gfx::Point(
     m_zoom.remove(pt.x - vp.x + scroll.x - m_padding.x),
@@ -1024,8 +1034,8 @@ gfx::Point Editor::screenToEditor(const gfx::Point& pt)
 Point Editor::editorToScreen(const gfx::Point& pt)
 {
   View* view = View::getView(this);
-  Rect vp = view->getViewportBounds();
-  Point scroll = view->getViewScroll();
+  Rect vp = view->viewportBounds();
+  Point scroll = view->viewScroll();
 
   return Point(
     (vp.x - scroll.x + m_padding.x + m_zoom.apply(pt.x)),
@@ -1035,15 +1045,15 @@ Point Editor::editorToScreen(const gfx::Point& pt)
 Rect Editor::screenToEditor(const Rect& rc)
 {
   return gfx::Rect(
-    screenToEditor(rc.getOrigin()),
-    screenToEditor(rc.getPoint2()));
+    screenToEditor(rc.origin()),
+    screenToEditor(rc.point2()));
 }
 
 Rect Editor::editorToScreen(const Rect& rc)
 {
   return gfx::Rect(
-    editorToScreen(rc.getOrigin()),
-    editorToScreen(rc.getPoint2()));
+    editorToScreen(rc.origin()),
+    editorToScreen(rc.point2()));
 }
 
 void Editor::addObserver(EditorObserver* observer)
@@ -1071,7 +1081,7 @@ Rect Editor::getVisibleSpriteBounds()
   if (!m_sprite) return Rect();
 
   View* view = View::getView(this);
-  Rect vp = view->getViewportBounds();
+  Rect vp = view->viewportBounds();
   vp = screenToEditor(vp);
 
   return vp.createIntersection(m_sprite->bounds());
@@ -1082,7 +1092,7 @@ void Editor::centerInSpritePoint(const gfx::Point& spritePos)
 {
   HideBrushPreview hide(m_brushPreview);
   View* view = View::getView(this);
-  Rect vp = view->getViewportBounds();
+  Rect vp = view->viewportBounds();
 
   gfx::Point scroll(
     m_padding.x - (vp.w/2) + m_zoom.apply(1)/2 + m_zoom.apply(spritePos.x),
@@ -1324,7 +1334,7 @@ bool Editor::onProcessMessage(Message* msg)
   return Widget::onProcessMessage(msg);
 }
 
-void Editor::onPreferredSize(PreferredSizeEvent& ev)
+void Editor::onSizeHint(SizeHintEvent& ev)
 {
   gfx::Size sz(0, 0);
 
@@ -1337,7 +1347,7 @@ void Editor::onPreferredSize(PreferredSizeEvent& ev)
     sz.w = 4;
     sz.h = 4;
   }
-  ev.setPreferredSize(sz);
+  ev.setSizeHint(sz);
 }
 
 void Editor::onResize(ui::ResizeEvent& ev)
@@ -1349,9 +1359,9 @@ void Editor::onResize(ui::ResizeEvent& ev)
 void Editor::onPaint(ui::PaintEvent& ev)
 {
   HideBrushPreview hide(m_brushPreview);
-  Graphics* g = ev.getGraphics();
-  gfx::Rect rc = getClientBounds();
-  SkinTheme* theme = static_cast<SkinTheme*>(this->getTheme());
+  Graphics* g = ev.graphics();
+  gfx::Rect rc = clientBounds();
+  SkinTheme* theme = static_cast<SkinTheme*>(this->theme());
 
   // Editor without sprite
   if (!m_sprite) {
@@ -1379,7 +1389,7 @@ void Editor::onPaint(ui::PaintEvent& ev)
       // The sprite is locked to be read, so we can draw an opaque
       // background only.
       g->fillRect(theme->colors.editorFace(), rc);
-      defer_invalid_rect(g->getClipBounds().offset(getBounds().getOrigin()));
+      defer_invalid_rect(g->getClipBounds().offset(bounds().origin()));
     }
   }
 }
@@ -1450,7 +1460,7 @@ void Editor::setZoomAndCenterInMouse(const Zoom& zoom,
 {
   HideBrushPreview hide(m_brushPreview);
   View* view = View::getView(this);
-  Rect vp = view->getViewportBounds();
+  Rect vp = view->viewportBounds();
 
   gfx::Point screenPos;
   gfx::Point spritePos;
@@ -1485,7 +1495,7 @@ void Editor::setZoomAndCenterInMouse(const Zoom& zoom,
     padding.x - (screenPos.x-vp.x) + zoom.apply(spritePos.x+zoom.remove(1)/2) + int(zoom.apply(subpixelPos.x)),
     padding.y - (screenPos.y-vp.y) + zoom.apply(spritePos.y+zoom.remove(1)/2) + int(zoom.apply(subpixelPos.y)));
 
-  if ((m_zoom != zoom) || (screenPos != view->getViewScroll())) {
+  if ((m_zoom != zoom) || (screenPos != view->viewScroll())) {
     bool blitValidRegion = (m_zoom == zoom);
 
     m_zoom = zoom;
@@ -1536,7 +1546,7 @@ void Editor::pasteImage(const Image* image, const Mask* mask)
 
     // If the pasted image original location center point isn't
     // visible, we center the image in the editor's visible bounds.
-    if (!visibleBounds.contains(mask->bounds().getCenter())) {
+    if (!visibleBounds.contains(mask->bounds().center())) {
       x = visibleBounds.x + visibleBounds.w/2 - image->width()/2;
       y = visibleBounds.y + visibleBounds.h/2 - image->height()/2;
     }
@@ -1615,7 +1625,7 @@ void Editor::showAnimationSpeedMultiplierPopup(bool withStopBehaviorOptions)
 
   for (double option : options) {
     MenuItem* item = new MenuItem("Speed x" + base::convert_to<std::string>(option));
-    item->Click.connect(Bind<void>(&Editor::setAnimationSpeedMultiplier, this, option));
+    item->Click.connect(base::Bind<void>(&Editor::setAnimationSpeedMultiplier, this, option));
     item->setSelected(m_aniSpeed == option);
     menu.addChild(item);
   }
@@ -1669,7 +1679,7 @@ gfx::Point Editor::calcExtraPadding(const Zoom& zoom)
 {
   View* view = View::getView(this);
   if (view) {
-    Rect vp = view->getViewportBounds();
+    Rect vp = view->viewportBounds();
     return gfx::Point(
       std::max<int>(vp.w/2, vp.w - zoom.apply(m_sprite->width())),
       std::max<int>(vp.h/2, vp.h - zoom.apply(m_sprite->height())));

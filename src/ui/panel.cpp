@@ -11,7 +11,7 @@
 #include "ui/panel.h"
 
 #include "ui/resize_event.h"
-#include "ui/preferred_size_event.h"
+#include "ui/size_hint_event.h"
 
 namespace ui {
 
@@ -22,8 +22,7 @@ Panel::Panel()
 
 void Panel::showChild(Widget* widget)
 {
-  UI_FOREACH_WIDGET(getChildren(), it) {
-    Widget* child = *it;
+  for (auto child : children()) {
     if (!child->isDecorative())
       child->setVisible(child == widget);
   }
@@ -33,27 +32,24 @@ void Panel::showChild(Widget* widget)
 void Panel::onResize(ResizeEvent& ev)
 {
   // Copy the new position rectangle
-  setBoundsQuietly(ev.getBounds());
+  setBoundsQuietly(ev.bounds());
 
   // Set all the children to the same "cpos"
-  gfx::Rect cpos = getChildrenBounds();
-  UI_FOREACH_WIDGET(getChildren(), it) {
-    Widget* child = *it;
+  gfx::Rect cpos = childrenBounds();
+  for (auto child : children()) {
     if (!child->isDecorative())
       child->setBounds(cpos);
   }
 }
 
-void Panel::onPreferredSize(PreferredSizeEvent& ev)
+void Panel::onSizeHint(SizeHintEvent& ev)
 {
   gfx::Size maxSize(0, 0);
   gfx::Size reqSize;
 
-  UI_FOREACH_WIDGET(getChildren(), it) {
-    Widget* child = *it;
-
+  for (auto child : children()) {
     if (!child->isDecorative()) {
-      reqSize = child->getPreferredSize();
+      reqSize = child->sizeHint();
 
       maxSize.w = MAX(maxSize.w, reqSize.w);
       maxSize.h = MAX(maxSize.h, reqSize.h);
@@ -61,9 +57,9 @@ void Panel::onPreferredSize(PreferredSizeEvent& ev)
   }
 
   if (hasText())
-    maxSize.w = MAX(maxSize.w, getTextWidth());
+    maxSize.w = MAX(maxSize.w, textWidth());
 
-  ev.setPreferredSize(
+  ev.setSizeHint(
     maxSize.w + border().width(),
     maxSize.h + border().height());
 }

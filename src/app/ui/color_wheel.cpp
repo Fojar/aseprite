@@ -24,7 +24,7 @@
 #include "ui/menu.h"
 #include "ui/message.h"
 #include "ui/paint_event.h"
-#include "ui/preferred_size_event.h"
+#include "ui/size_hint_event.h"
 #include "ui/resize_event.h"
 #include "ui/system.h"
 
@@ -61,7 +61,7 @@ ColorWheel::ColorWheel()
 
   setBorder(gfx::Border(3*ui::guiscale()));
 
-  m_options.Click.connect(Bind<void>(&ColorWheel::onOptions, this));
+  m_options.Click.connect(base::Bind<void>(&ColorWheel::onOptions, this));
   m_options.setBgColor(theme->colors.editorFace());
   m_options.setIconInterface(
     new ButtonIconImpl(theme->parts.palOptions(),
@@ -178,16 +178,16 @@ app::Color ColorWheel::getColorInHarmony(int j) const
                              m_mainColor.getValue());
 }
 
-void ColorWheel::onPreferredSize(PreferredSizeEvent& ev)
+void ColorWheel::onSizeHint(SizeHintEvent& ev)
 {
-  ev.setPreferredSize(gfx::Size(32*ui::guiscale(), 32*ui::guiscale()));
+  ev.setSizeHint(gfx::Size(32*ui::guiscale(), 32*ui::guiscale()));
 }
 
 void ColorWheel::onResize(ui::ResizeEvent& ev)
 {
   Widget::onResize(ev);
 
-  gfx::Rect rc = getClientChildrenBounds();
+  gfx::Rect rc = clientChildrenBounds();
   int r = MIN(rc.w/2, rc.h/2);
 
   m_clientBounds = rc;
@@ -196,8 +196,8 @@ void ColorWheel::onResize(ui::ResizeEvent& ev)
                             rc.y+rc.h/2-r,
                             r*2, r*2);
 
-  gfx::Size prefSize = m_options.getPreferredSize();
-  rc = getChildrenBounds();
+  gfx::Size prefSize = m_options.sizeHint();
+  rc = childrenBounds();
   rc.x += rc.w-prefSize.w;
   rc.w = prefSize.w;
   rc.h = prefSize.h;
@@ -206,12 +206,12 @@ void ColorWheel::onResize(ui::ResizeEvent& ev)
 
 void ColorWheel::onPaint(ui::PaintEvent& ev)
 {
-  ui::Graphics* g = ev.getGraphics();
-  SkinTheme* theme = static_cast<SkinTheme*>(getTheme());
+  ui::Graphics* g = ev.graphics();
+  SkinTheme* theme = static_cast<SkinTheme*>(this->theme());
 
-  theme->drawRect(g, getClientBounds(),
+  theme->drawRect(g, clientBounds(),
                   theme->parts.editorNormal().get(),
-                  getBgColor());
+                  bgColor());
 
   const gfx::Rect& rc = m_clientBounds;
 
@@ -241,11 +241,11 @@ void ColorWheel::onPaint(ui::PaintEvent& ev)
       int hue = color.getHue()-30;
       int sat = color.getSaturation();
       gfx::Point pos =
-        m_wheelBounds.getCenter() +
+        m_wheelBounds.center() +
         gfx::Point(int(+std::cos(PI*hue/180)*double(m_wheelRadius)*sat/100.0),
                    int(-std::sin(PI*hue/180)*double(m_wheelRadius)*sat/100.0));
 
-      she::Surface* icon = theme->parts.colorWheelIndicator()->getBitmap(0);
+      she::Surface* icon = theme->parts.colorWheelIndicator()->bitmap(0);
       g->drawRgbaSurface(icon,
                          pos.x-icon->width()/2,
                          pos.y-icon->height()/2);
@@ -273,7 +273,7 @@ bool ColorWheel::onProcessMessage(ui::Message* msg)
 
       app::Color color = pickColor(
         mouseMsg->position()
-        - getBounds().getOrigin());
+        - bounds().origin());
 
       if (color != app::Color::fromMask()) {
         base::ScopedValue<bool> switcher(m_lockColor, m_harmonyPicked, false);
@@ -295,7 +295,7 @@ bool ColorWheel::onProcessMessage(ui::Message* msg)
       MouseMessage* mouseMsg = static_cast<MouseMessage*>(msg);
       app::Color color = pickColor(
         mouseMsg->position()
-        - getBounds().getOrigin());
+        - bounds().origin());
 
       if (color.getType() != app::Color::MaskType) {
         ui::set_mouse_cursor(kEyedropperCursor);
@@ -344,17 +344,17 @@ void ColorWheel::onOptions()
     case Harmony::SQUARE: square.setSelected(true); break;
   }
 
-  discrete.Click.connect(Bind<void>(&ColorWheel::setDiscrete, this, !isDiscrete()));
-  none.Click.connect(Bind<void>(&ColorWheel::setHarmony, this, Harmony::NONE));
-  complementary.Click.connect(Bind<void>(&ColorWheel::setHarmony, this, Harmony::COMPLEMENTARY));
-  monochromatic.Click.connect(Bind<void>(&ColorWheel::setHarmony, this, Harmony::MONOCHROMATIC));
-  analogous.Click.connect(Bind<void>(&ColorWheel::setHarmony, this, Harmony::ANALOGOUS));
-  split.Click.connect(Bind<void>(&ColorWheel::setHarmony, this, Harmony::SPLIT));
-  triadic.Click.connect(Bind<void>(&ColorWheel::setHarmony, this, Harmony::TRIADIC));
-  tetradic.Click.connect(Bind<void>(&ColorWheel::setHarmony, this, Harmony::TETRADIC));
-  square.Click.connect(Bind<void>(&ColorWheel::setHarmony, this, Harmony::SQUARE));
+  discrete.Click.connect(base::Bind<void>(&ColorWheel::setDiscrete, this, !isDiscrete()));
+  none.Click.connect(base::Bind<void>(&ColorWheel::setHarmony, this, Harmony::NONE));
+  complementary.Click.connect(base::Bind<void>(&ColorWheel::setHarmony, this, Harmony::COMPLEMENTARY));
+  monochromatic.Click.connect(base::Bind<void>(&ColorWheel::setHarmony, this, Harmony::MONOCHROMATIC));
+  analogous.Click.connect(base::Bind<void>(&ColorWheel::setHarmony, this, Harmony::ANALOGOUS));
+  split.Click.connect(base::Bind<void>(&ColorWheel::setHarmony, this, Harmony::SPLIT));
+  triadic.Click.connect(base::Bind<void>(&ColorWheel::setHarmony, this, Harmony::TRIADIC));
+  tetradic.Click.connect(base::Bind<void>(&ColorWheel::setHarmony, this, Harmony::TETRADIC));
+  square.Click.connect(base::Bind<void>(&ColorWheel::setHarmony, this, Harmony::SQUARE));
 
-  gfx::Rect rc = m_options.getBounds();
+  gfx::Rect rc = m_options.bounds();
   menu.showPopup(gfx::Point(rc.x+rc.w, rc.y));
 }
 

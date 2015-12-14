@@ -87,8 +87,9 @@ void NewBrushCommand::onExecute(Context* context)
       EditorStatePtr(
         new SelectBoxState(
           this, current_editor->sprite()->bounds(),
-          SelectBoxState::DARKOUTSIDE |
-          SelectBoxState::QUICKBOX)));
+          SelectBoxState::Flags(
+            int(SelectBoxState::Flags::DarkOutside) |
+            int(SelectBoxState::Flags::QuickBox)))));
   }
   // Create a brush from the active selection
   else {
@@ -146,7 +147,7 @@ void NewBrushCommand::createBrush(const Site& site, const Mask* mask)
   // New brush
   doc::BrushRef brush(new doc::Brush());
   brush->setImage(image.get());
-  brush->setPatternOrigin(mask->bounds().getOrigin());
+  brush->setPatternOrigin(mask->bounds().origin());
 
   // TODO add a active stock property in app::Context
   ContextBar* ctxBar = App::instance()->getMainWindow()->getContextBar();

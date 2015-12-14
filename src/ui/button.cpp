@@ -11,7 +11,7 @@
 #include "ui/button.h"
 #include "ui/manager.h"
 #include "ui/message.h"
-#include "ui/preferred_size_event.h"
+#include "ui/size_hint_event.h"
 #include "ui/theme.h"
 #include "ui/widget.h"
 #include "ui/window.h"
@@ -48,12 +48,12 @@ ButtonBase::~ButtonBase()
     m_iconInterface->destroy();
 }
 
-WidgetType ButtonBase::getBehaviorType() const
+WidgetType ButtonBase::behaviorType() const
 {
   return m_behaviorType;
 }
 
-WidgetType ButtonBase::getDrawType() const
+WidgetType ButtonBase::drawType() const
 {
   return m_drawType;
 }
@@ -101,8 +101,8 @@ bool ButtonBase::onProcessMessage(Message* msg)
       if (isEnabled()) {
         bool mnemonicPressed =
           (msg->altPressed() &&
-           getMnemonicChar() &&
-           getMnemonicChar() == tolower(keymsg->unicodeChar()));
+           mnemonicChar() &&
+           mnemonicChar() == tolower(keymsg->unicodeChar()));
 
         // For kButtonWidget
         if (m_behaviorType == kButtonWidget) {
@@ -125,11 +125,11 @@ bool ButtonBase::onProcessMessage(Message* msg)
           else if (isFocusMagnet() &&
                    ((scancode == kKeyEnter) ||
                     (scancode == kKeyEnterPad))) {
-            getManager()->setFocus(this);
+            manager()->setFocus(this);
 
             // Dispatch focus movement messages (because the buttons
             // process them)
-            getManager()->dispatchMessages();
+            manager()->dispatchMessages();
 
             setSelected(true);
             return true;
@@ -271,25 +271,25 @@ bool ButtonBase::onProcessMessage(Message* msg)
   return Widget::onProcessMessage(msg);
 }
 
-void ButtonBase::onPreferredSize(PreferredSizeEvent& ev)
+void ButtonBase::onSizeHint(SizeHintEvent& ev)
 {
   gfx::Rect box;
-  gfx::Size iconSize = (m_iconInterface ? m_iconInterface->getSize(): gfx::Size(0, 0));
+  gfx::Size iconSize = (m_iconInterface ? m_iconInterface->size(): gfx::Size(0, 0));
   getTextIconInfo(&box, NULL, NULL,
-                  m_iconInterface ? m_iconInterface->getIconAlign(): 0,
+                  m_iconInterface ? m_iconInterface->iconAlign(): 0,
                   iconSize.w,
                   iconSize.h);
 
-  ev.setPreferredSize(box.w + border().width(),
-                      box.h + border().height());
+  ev.setSizeHint(box.w + border().width(),
+                 box.h + border().height());
 }
 
 void ButtonBase::onPaint(PaintEvent& ev)
 {
   switch (m_drawType) {
-    case kButtonWidget: getTheme()->paintButton(ev); break;
-    case kCheckWidget:  getTheme()->paintCheckBox(ev); break;
-    case kRadioWidget:  getTheme()->paintRadioButton(ev); break;
+    case kButtonWidget: theme()->paintButton(ev); break;
+    case kCheckWidget:  theme()->paintCheckBox(ev); break;
+    case kRadioWidget:  theme()->paintRadioButton(ev); break;
   }
 }
 
@@ -348,7 +348,7 @@ int RadioButton::getRadioGroup() const
 
 void RadioButton::deselectRadioGroup()
 {
-  Widget* widget = getRoot();
+  Widget* widget = window();
   if (!widget)
     return;
 
@@ -364,8 +364,8 @@ void RadioButton::deselectRadioGroup()
         radioButton->setSelected(false);
     }
 
-    UI_FOREACH_WIDGET(widget->getChildren(), it) {
-      allChildrens.push(*it);
+    for (auto child : widget->children()) {
+      allChildrens.push(child);
     }
   }
 }
@@ -377,7 +377,7 @@ void RadioButton::onSelect()
   if (!m_handleSelect)
     return;
 
-  if (getBehaviorType() == kRadioWidget) {
+  if (behaviorType() == kRadioWidget) {
     deselectRadioGroup();
 
     m_handleSelect = false;

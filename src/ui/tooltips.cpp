@@ -17,7 +17,7 @@
 #include "ui/manager.h"
 #include "ui/message.h"
 #include "ui/paint_event.h"
-#include "ui/preferred_size_event.h"
+#include "ui/size_hint_event.h"
 #include "ui/system.h"
 #include "ui/theme.h"
 
@@ -101,15 +101,15 @@ bool TooltipManager::onProcessMessage(Message* msg)
 void TooltipManager::onTick()
 {
   if (!m_tipWindow) {
-    gfx::Rect bounds = m_target.widget->getBounds();
+    gfx::Rect bounds = m_target.widget->bounds();
 
     m_tipWindow.reset(new TipWindow(m_target.tipInfo.text, bounds));
     int x = get_mouse_position().x+12*guiscale();
     int y = get_mouse_position().y+12*guiscale();
 
     m_tipWindow->remapWindow();
-    int w = m_tipWindow->getBounds().w;
-    int h = m_tipWindow->getBounds().h;
+    int w = m_tipWindow->bounds().w;
+    int h = m_tipWindow->bounds().h;
 
     int arrowAlign = m_target.tipInfo.arrowAlign;
     int trycount = 0;
@@ -187,7 +187,7 @@ void TooltipManager::onTick()
 // TipWindow
 
 TipWindow::TipWindow(const std::string& text, const gfx::Rect& target)
-  : PopupWindow(text, kCloseOnClickInOtherWindow)
+  : PopupWindow(text, ClickBehavior::CloseOnClickInOtherWindow)
   , m_arrowAlign(0)
   , m_target(target)
   , m_closeOnKeyDown(true)
@@ -232,25 +232,24 @@ bool TipWindow::onProcessMessage(Message* msg)
   return PopupWindow::onProcessMessage(msg);
 }
 
-void TipWindow::onPreferredSize(PreferredSizeEvent& ev)
+void TipWindow::onSizeHint(SizeHintEvent& ev)
 {
   ScreenGraphics g;
-  g.setFont(getFont());
-  Size resultSize = g.fitString(getText(),
-                                (getClientBounds() - border()).w,
-                                getAlign());
+  g.setFont(font());
+  Size resultSize =
+    g.fitString(text(),
+                (clientBounds() - border()).w,
+                align());
 
   resultSize.w += border().width();
   resultSize.h += border().height();
 
-  if (!getChildren().empty()) {
+  if (!children().empty()) {
     Size maxSize(0, 0);
     Size reqSize;
 
-    UI_FOREACH_WIDGET(getChildren(), it) {
-      Widget* child = *it;
-
-      reqSize = child->getPreferredSize();
+    for (auto child : children()) {
+      reqSize = child->sizeHint();
 
       maxSize.w = MAX(maxSize.w, reqSize.w);
       maxSize.h = MAX(maxSize.h, reqSize.h);
@@ -260,7 +259,7 @@ void TipWindow::onPreferredSize(PreferredSizeEvent& ev)
     resultSize.h += maxSize.h;
   }
 
-  ev.setPreferredSize(resultSize);
+  ev.setSizeHint(resultSize);
 }
 
 void TipWindow::onInitTheme(InitThemeEvent& ev)
@@ -279,7 +278,7 @@ void TipWindow::onInitTheme(InitThemeEvent& ev)
 
 void TipWindow::onPaint(PaintEvent& ev)
 {
-  getTheme()->paintTooltip(ev);
+  theme()->paintTooltip(ev);
 }
 
 } // namespace ui

@@ -59,6 +59,7 @@ bool PasteTextCommand::onEnabled(Context* ctx)
 class PasteTextWindow : public app::gen::PasteText {
 public:
   PasteTextWindow(const std::string& face, int size,
+                  bool antialias,
                   const app::Color& color)
     : m_face(face) {
     ok()->setEnabled(!m_face.empty());
@@ -66,9 +67,10 @@ public:
       updateFontFaceButton();
 
     fontSize()->setTextf("%d", size);
-    fontFace()->Click.connect(Bind<void>(&PasteTextWindow::onSelectFontFile, this));
-    fontFace()->DropDownClick.connect(Bind<void>(&PasteTextWindow::onSelectSystemFont, this));
+    fontFace()->Click.connect(base::Bind<void>(&PasteTextWindow::onSelectFontFile, this));
+    fontFace()->DropDownClick.connect(base::Bind<void>(&PasteTextWindow::onSelectSystemFont, this));
     fontColor()->setColor(color);
+    this->antialias()->setSelected(antialias);
   }
 
   std::string faceValue() const {
@@ -76,7 +78,7 @@ public:
   }
 
   int sizeValue() const {
-    int size = fontSize()->getTextInt();
+    int size = fontSize()->textInt();
     size = MID(1, size, 5000);
     return size;
   }
@@ -112,7 +114,7 @@ private:
       try {
         m_fontPopup.reset(new FontPopup());
         m_fontPopup->Load.connect(&PasteTextWindow::setFontFace, this);
-        m_fontPopup->Close.connect(Bind<void>(&PasteTextWindow::onCloseFontPopup, this));
+        m_fontPopup->Close.connect(base::Bind<void>(&PasteTextWindow::onCloseFontPopup, this));
       }
       catch (const std::exception& ex) {
         Console::showException(ex);
@@ -121,7 +123,7 @@ private:
     }
 
     if (!m_fontPopup->isVisible()) {
-      gfx::Rect bounds = fontFace()->getBounds();
+      gfx::Rect bounds = fontFace()->bounds();
       m_fontPopup->showPopup(
         gfx::Rect(bounds.x, bounds.y+bounds.h,
                   ui::display_w()/2, ui::display_h()/2));
@@ -148,31 +150,34 @@ void PasteTextCommand::onExecute(Context* ctx)
   Preferences& pref = Preferences::instance();
   PasteTextWindow window(pref.textTool.fontFace(),
                          pref.textTool.fontSize(),
+                         pref.textTool.antialias(),
                          pref.colorBar.fgColor());
 
   window.userText()->setText(last_text_used);
 
   window.openWindowInForeground();
-  if (window.getKiller() != window.ok())
+  if (window.closer() != window.ok())
     return;
 
-  last_text_used = window.userText()->getText();
+  last_text_used = window.userText()->text();
 
+  bool antialias = window.antialias()->isSelected();
   std::string faceName = window.faceValue();
   int size = window.sizeValue();
   size = MID(1, size, 999);
   pref.textTool.fontFace(faceName);
   pref.textTool.fontSize(size);
+  pref.textTool.antialias(antialias);
 
   try {
-    std::string text = window.userText()->getText();
+    std::string text = window.userText()->text();
     app::Color appColor = window.fontColor()->getColor();
     doc::color_t color = doc::rgba(appColor.getRed(),
                                    appColor.getGreen(),
                                    appColor.getBlue(),
                                    appColor.getAlpha());
 
-    doc::ImageRef image(render_text(faceName, size, text, color));
+    doc::ImageRef image(render_text(faceName, size, text, color, antialias));
     if (image) {
       Sprite* sprite = editor->sprite();
       if (image->pixelFormat() != sprite->pixelFormat()) {

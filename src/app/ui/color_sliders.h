@@ -43,10 +43,10 @@ namespace app {
     void resetRelativeSliders();
 
     // Signals
-    Signal1<void, ColorSlidersChangeEvent&> ColorChange;
+    base::Signal1<void, ColorSlidersChangeEvent&> ColorChange;
 
   protected:
-    void onPreferredSize(ui::PreferredSizeEvent& ev);
+    void onSizeHint(ui::SizeHintEvent& ev);
 
     // For derived classes
     void addSlider(Channel channel, const char* labelText, int min, int max);

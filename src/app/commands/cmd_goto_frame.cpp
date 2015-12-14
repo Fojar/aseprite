@@ -11,9 +11,11 @@
 
 #include "app/commands/command.h"
 #include "app/commands/params.h"
+#include "app/loop_tag.h"
 #include "app/modules/editors.h"
 #include "app/modules/gui.h"
 #include "app/ui/editor/editor.h"
+#include "doc/frame_tag.h"
 #include "doc/sprite.h"
 #include "ui/window.h"
 
@@ -22,6 +24,7 @@
 namespace app {
 
 using namespace ui;
+using namespace doc;
 
 class GotoCommand : public Command {
 protected:
@@ -50,7 +53,7 @@ public:
 
 protected:
   frame_t onGetFrame(Editor* editor) override {
-    return frame_t(0);
+    return 0;
   }
 };
 
@@ -64,11 +67,9 @@ public:
 protected:
   frame_t onGetFrame(Editor* editor) override {
     frame_t frame = editor->frame();
+    frame_t last = editor->sprite()->lastFrame();
 
-    if (frame > frame_t(0))
-      return frame-1;
-    else
-      return editor->sprite()->lastFrame();
+    return (frame > 0 ? frame-1: last);
   }
 };
 
@@ -81,10 +82,43 @@ public:
 protected:
   frame_t onGetFrame(Editor* editor) override {
     frame_t frame = editor->frame();
-    if (frame < editor->sprite()->lastFrame())
-      return frame+1;
-    else
-      return frame_t(0);
+    frame_t last = editor->sprite()->lastFrame();
+
+    return (frame < last ? frame+1: 0);
+  }
+};
+
+class GotoNextFrameWithSameTagCommand : public GotoCommand {
+public:
+  GotoNextFrameWithSameTagCommand() : GotoCommand("GotoNextFrameWithSameTag",
+                                                  "Go to Next Frame with same tag") { }
+  Command* clone() const override { return new GotoNextFrameWithSameTagCommand(*this); }
+
+protected:
+  frame_t onGetFrame(Editor* editor) override {
+    frame_t frame = editor->frame();
+    FrameTag* tag = get_animation_tag(editor->sprite(), frame);
+    frame_t first = (tag ? tag->fromFrame(): 0);
+    frame_t last = (tag ? tag->toFrame(): editor->sprite()->lastFrame());
+
+    return (frame < last ? frame+1: first);
+  }
+};
+
+class GotoPreviousFrameWithSameTagCommand : public GotoCommand {
+public:
+  GotoPreviousFrameWithSameTagCommand() : GotoCommand("GotoPreviousFrameWithSameTag",
+                                                      "Go to Previous Frame with same tag") { }
+  Command* clone() const override { return new GotoPreviousFrameWithSameTagCommand(*this); }
+
+protected:
+  frame_t onGetFrame(Editor* editor) override {
+    frame_t frame = editor->frame();
+    FrameTag* tag = get_animation_tag(editor->sprite(), frame);
+    frame_t first = (tag ? tag->fromFrame(): 0);
+    frame_t last = (tag ? tag->toFrame(): editor->sprite()->lastFrame());
+
+    return (frame > first ? frame-1: last);
   }
 };
 
@@ -108,8 +142,7 @@ public:
   Command* clone() const override { return new GotoFrameCommand(*this); }
 
 protected:
-  void onLoadParams(const Params& params) override
-  {
+  void onLoadParams(const Params& params) override {
     std::string frame = params.get("frame");
     if (!frame.empty()) m_frame = strtol(frame.c_str(), NULL, 10);
     else m_frame = 0;
@@ -122,10 +155,10 @@ protected:
       window.frame()->setTextf("%d", editor->frame()+1);
 
       window.openWindowInForeground();
-      if (window.getKiller() != window.ok())
+      if (window.closer() != window.ok())
         return editor->frame();
 
-      m_frame = window.frame()->getTextInt();
+      m_frame = window.frame()->textInt();
     }
 
     return MID(0, m_frame-1, editor->sprite()->lastFrame());
@@ -155,6 +188,16 @@ Command* CommandFactory::createGotoNextFrameCommand()
 Command* CommandFactory::createGotoLastFrameCommand()
 {
   return new GotoLastFrameCommand;
+}
+
+Command* CommandFactory::createGotoNextFrameWithSameTagCommand()
+{
+  return new GotoNextFrameWithSameTagCommand;
+}
+
+Command* CommandFactory::createGotoPreviousFrameWithSameTagCommand()
+{
+  return new GotoPreviousFrameWithSameTagCommand;
 }
 
 Command* CommandFactory::createGotoFrameCommand()

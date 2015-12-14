@@ -50,7 +50,7 @@ enum {
 };
 
 ColorSelector::ColorSelector()
-  : PopupWindowPin("Color Selector", PopupWindow::kCloseOnClickInOtherWindow)
+  : PopupWindowPin("Color Selector", ClickBehavior::CloseOnClickInOtherWindow)
   , m_vbox(VERTICAL)
   , m_topBox(HORIZONTAL)
   , m_color(app::Color::fromMask())
@@ -89,7 +89,7 @@ ColorSelector::ColorSelector()
   m_vbox.addChild(&m_maskLabel);
   addChild(&m_vbox);
 
-  m_colorType.ItemChange.connect(Bind<void>(&ColorSelector::onColorTypeClick, this));
+  m_colorType.ItemChange.connect(base::Bind<void>(&ColorSelector::onColorTypeClick, this));
 
   m_rgbSliders.ColorChange.connect(&ColorSelector::onColorSlidersChange, this);
   m_hsvSliders.ColorChange.connect(&ColorSelector::onColorSlidersChange, this);
@@ -97,7 +97,7 @@ ColorSelector::ColorSelector()
   m_hexColorEntry.ColorChange.connect(&ColorSelector::onColorHexEntryChange, this);
 
   selectColorType(app::Color::RgbType);
-  setPreferredSize(gfx::Size(300*guiscale(), getPreferredSize().h));
+  setSizeHint(gfx::Size(300*guiscale(), sizeHint().h));
 
   m_onPaletteChangeConn =
     App::instance()->PaletteChange.connect(&ColorSelector::onPaletteChange, this);
@@ -107,7 +107,7 @@ ColorSelector::ColorSelector()
 
 ColorSelector::~ColorSelector()
 {
-  getPin()->getParent()->removeChild(getPin());
+  getPin()->parent()->removeChild(getPin());
 }
 
 void ColorSelector::setColor(const app::Color& color, SetColorOptions options)

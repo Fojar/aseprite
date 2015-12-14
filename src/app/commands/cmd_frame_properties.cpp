@@ -118,8 +118,8 @@ void FramePropertiesCommand::onExecute(Context* context)
   window.frlen()->setTextf("%d", sprite->frameDuration(firstFrame));
 
   window.openWindowInForeground();
-  if (window.getKiller() == window.ok()) {
-    int num = window.frlen()->getTextInt();
+  if (window.closer() == window.ok()) {
+    int num = window.frlen()->textInt();
 
     ContextWriter writer(reader);
     Transaction transaction(writer.context(), "Frame Duration");

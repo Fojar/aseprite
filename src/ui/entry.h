@@ -43,12 +43,12 @@ namespace ui {
     gfx::Rect getEntryTextBounds() const;
 
     // Signals
-    Signal0<void> Change;
+    base::Signal0<void> Change;
 
   protected:
     // Events
     bool onProcessMessage(Message* msg) override;
-    void onPreferredSize(PreferredSizeEvent& ev) override;
+    void onSizeHint(SizeHintEvent& ev) override;
     void onPaint(PaintEvent& ev) override;
     void onSetText() override;
 

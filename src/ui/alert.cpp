@@ -112,11 +112,11 @@ int Alert::show(const char* format, ...)
   // Open it
   window->openWindowInForeground();
 
-  // Check the killer
+  // Check the closer
   int ret = 0;
-  if (Widget* killer = window->getKiller()) {
+  if (Widget* closer = window->closer()) {
     for (int i=0; i<(int)buttons.size(); ++i) {
-      if (killer == buttons[i]) {
+      if (closer == buttons[i]) {
         ret = i+1;
         break;
       }
@@ -173,7 +173,7 @@ void Alert::processString(char* buf, std::vector<Widget*>& labels, std::vector<W
 
           sprintf(buttonId, "button-%lu", buttons.size());
           button_widget->setId(buttonId);
-          button_widget->Click.connect(Bind<void>(&Window::closeWindow, this, button_widget));
+          button_widget->Click.connect(base::Bind<void>(&Window::closeWindow, this, button_widget));
         }
 
         buf[c] = chr;

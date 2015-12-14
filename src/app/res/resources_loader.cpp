@@ -26,7 +26,7 @@ ResourcesLoader::ResourcesLoader(ResourcesLoaderDelegate* delegate)
   : m_delegate(delegate)
   , m_done(false)
   , m_cancel(false)
-  , m_thread(Bind<void>(&ResourcesLoader::threadLoadResources, this))
+  , m_thread(base::Bind<void>(&ResourcesLoader::threadLoadResources, this))
 {
   LOG("ResourcesLoader::ResourcesLoader()\n");
 }
@@ -72,13 +72,12 @@ void ResourcesLoader::threadLoadResources()
   if (!item)
     return;
 
-  FileItemList list = item->getChildren();
-  for (FileItemList::iterator it=list.begin(), end=list.end();
-       it != end; ++it) {
+  FileItemList list = item->children();
+  for (auto child : list) {
     if (m_cancel)
       break;
 
-    Resource* resource = m_delegate->loadResource((*it)->getFileName());
+    Resource* resource = m_delegate->loadResource((child)->fileName());
     if (resource)
       m_queue.push(resource);
   }

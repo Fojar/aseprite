@@ -13,7 +13,7 @@
 #include "she/font.h"
 #include "ui/manager.h"
 #include "ui/message.h"
-#include "ui/preferred_size_event.h"
+#include "ui/size_hint_event.h"
 #include "ui/system.h"
 #include "ui/theme.h"
 #include "ui/widget.h"
@@ -118,7 +118,7 @@ bool Slider::onProcessMessage(Message* msg)
     case kMouseMoveMessage:
       if (hasCapture()) {
         int value, accuracy, range;
-        gfx::Rect rc = getChildrenBounds();
+        gfx::Rect rc = childrenBounds();
         gfx::Point mousePos = static_cast<MouseMessage*>(msg)->position();
 
         range = m_max - m_min + 1;
@@ -214,23 +214,23 @@ not_used:;
   return Widget::onProcessMessage(msg);
 }
 
-void Slider::onPreferredSize(PreferredSizeEvent& ev)
+void Slider::onSizeHint(SizeHintEvent& ev)
 {
-  int min_w = getFont()->textLength(convertValueToText(m_min));
-  int max_w = getFont()->textLength(convertValueToText(m_max));
+  int min_w = font()->textLength(convertValueToText(m_min));
+  int max_w = font()->textLength(convertValueToText(m_max));
 
   int w = MAX(min_w, max_w);
-  int h = getTextHeight();
+  int h = textHeight();
 
   w += border().width();
   h += border().height();
 
-  ev.setPreferredSize(w, h);
+  ev.setSizeHint(w, h);
 }
 
 void Slider::onPaint(PaintEvent& ev)
 {
-  getTheme()->paintSlider(ev);
+  theme()->paintSlider(ev);
 }
 
 void Slider::onChange()

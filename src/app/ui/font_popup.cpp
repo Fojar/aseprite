@@ -29,7 +29,7 @@
 #include "she/system.h"
 #include "ui/box.h"
 #include "ui/button.h"
-#include "ui/preferred_size_event.h"
+#include "ui/size_hint_event.h"
 #include "ui/theme.h"
 #include "ui/view.h"
 
@@ -66,7 +66,7 @@ private:
     ListItem::onPaint(ev);
 
     if (m_image) {
-      Graphics* g = ev.getGraphics();
+      Graphics* g = ev.graphics();
       she::Surface* sur = she::instance()->createRgbaSurface(m_image->width(),
                                                              m_image->height());
 
@@ -74,16 +74,16 @@ private:
         m_image.get(), nullptr, sur,
         0, 0, 0, 0, m_image->width(), m_image->height());
 
-      g->drawRgbaSurface(sur, getTextWidth()+4, 0);
+      g->drawRgbaSurface(sur, textWidth()+4, 0);
       sur->dispose();
     }
   }
 
-  void onPreferredSize(PreferredSizeEvent& ev) override {
-    ListItem::onPreferredSize(ev);
+  void onSizeHint(SizeHintEvent& ev) override {
+    ListItem::onSizeHint(ev);
     if (m_image) {
-      gfx::Size sz = ev.getPreferredSize();
-      ev.setPreferredSize(
+      gfx::Size sz = ev.sizeHint();
+      ev.setSizeHint(
         sz.w + 4 + m_image->width(),
         MAX(sz.h, m_image->height()));
     }
@@ -93,7 +93,7 @@ private:
     if (m_image)
       return;
 
-    ListBox* listbox = static_cast<ListBox*>(getParent());
+    ListBox* listbox = static_cast<ListBox*>(parent());
     if (!listbox)
       return;
 
@@ -108,7 +108,8 @@ private:
           doc::rgba(gfx::getr(color),
                     gfx::getg(color),
                     gfx::getb(color),
-                    gfx::geta(color))));
+                    gfx::geta(color)),
+          true));                   // antialias
 
       View* view = View::getView(listbox);
       view->updateView();
@@ -129,8 +130,8 @@ private:
 
 FontPopup::FontPopup()
   : PopupWindow("Fonts",
-                kCloseOnClickInOtherWindow,
-                kDoNothingOnEnter)
+                ClickBehavior::CloseOnClickInOtherWindow,
+                EnterBehavior::DoNothingOnEnter)
   , m_popup(new gen::FontPopup())
 {
   setAutoRemap(false);
@@ -138,10 +139,10 @@ FontPopup::FontPopup()
 
   addChild(m_popup);
 
-  m_popup->loadFont()->Click.connect(Bind<void>(&FontPopup::onLoadFont, this));
+  m_popup->loadFont()->Click.connect(base::Bind<void>(&FontPopup::onLoadFont, this));
   m_listBox.setFocusMagnet(true);
-  m_listBox.Change.connect(Bind<void>(&FontPopup::onChangeFont, this));
-  m_listBox.DoubleClickItem.connect(Bind<void>(&FontPopup::onLoadFont, this));
+  m_listBox.Change.connect(base::Bind<void>(&FontPopup::onChangeFont, this));
+  m_listBox.DoubleClickItem.connect(base::Bind<void>(&FontPopup::onLoadFont, this));
 
   m_popup->view()->attachToView(&m_listBox);
 
@@ -199,7 +200,7 @@ FontPopup::FontPopup()
       m_listBox.addChild(new FontItem(file));
   }
 
-  if (m_listBox.getChildren().empty())
+  if (m_listBox.children().empty())
     m_listBox.addChild(new ListItem("No system fonts were found"));
 }
 

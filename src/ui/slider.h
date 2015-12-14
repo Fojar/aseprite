@@ -40,13 +40,13 @@ namespace ui {
     int convertTextToValue(const std::string& text) const;
 
     // Signals
-    Signal0<void> Change;
-    Signal0<void> SliderReleased;
+    base::Signal0<void> Change;
+    base::Signal0<void> SliderReleased;
 
   protected:
     // Events
     bool onProcessMessage(Message* msg) override;
-    void onPreferredSize(PreferredSizeEvent& ev) override;
+    void onSizeHint(SizeHintEvent& ev) override;
     void onPaint(PaintEvent& ev) override;
 
     // New events

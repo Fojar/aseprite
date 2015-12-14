@@ -12,7 +12,7 @@
 
 #include "gfx/size.h"
 #include "ui/message.h"
-#include "ui/preferred_size_event.h"
+#include "ui/size_hint_event.h"
 #include "ui/theme.h"
 
 namespace ui {
@@ -31,29 +31,28 @@ Separator::Separator(const std::string& text, int align)
 
 void Separator::onPaint(PaintEvent& ev)
 {
-  getTheme()->paintSeparator(ev);
+  theme()->paintSeparator(ev);
 }
 
-void Separator::onPreferredSize(PreferredSizeEvent& ev)
+void Separator::onSizeHint(SizeHintEvent& ev)
 {
   Size maxSize(0, 0);
 
-  UI_FOREACH_WIDGET(getChildren(), it) {
-    Widget* child = *it;
-    Size reqSize = child->getPreferredSize();
+  for (auto child : children()) {
+    Size reqSize = child->sizeHint();
     maxSize.w = MAX(maxSize.w, reqSize.w);
     maxSize.h = MAX(maxSize.h, reqSize.h);
   }
 
   if (hasText()) {
-    maxSize.w = MAX(maxSize.w, getTextWidth());
-    maxSize.h = MAX(maxSize.h, getTextHeight());
+    maxSize.w = MAX(maxSize.w, textWidth());
+    maxSize.h = MAX(maxSize.h, textHeight());
   }
 
   int w = maxSize.w + border().width();
   int h = maxSize.h + border().height();
 
-  ev.setPreferredSize(Size(w, h));
+  ev.setSizeHint(Size(w, h));
 }
 
 } // namespace ui

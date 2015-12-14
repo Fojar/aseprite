@@ -77,10 +77,10 @@ namespace app {
     void setInkType(tools::InkType type);
 
     // Signals
-    Signal0<void> BrushChange;
+    base::Signal0<void> BrushChange;
 
   protected:
-    void onPreferredSize(ui::PreferredSizeEvent& ev) override;
+    void onSizeHint(ui::SizeHintEvent& ev) override;
     void onToolSetOpacity(const int& newOpacity);
     void onToolSetFreehandAlgorithm();
 
@@ -158,10 +158,10 @@ namespace app {
     BrushSlots m_brushes;
     ui::Label* m_selectBoxHelp;
     SymmetryField* m_symmetry;
-    ScopedConnection m_sizeConn;
-    ScopedConnection m_angleConn;
-    ScopedConnection m_opacityConn;
-    ScopedConnection m_freehandAlgoConn;
+    base::ScopedConnection m_sizeConn;
+    base::ScopedConnection m_angleConn;
+    base::ScopedConnection m_opacityConn;
+    base::ScopedConnection m_freehandAlgoConn;
   };
 
 } // namespace app

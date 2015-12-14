@@ -114,12 +114,13 @@ void MaskByColorCommand::onExecute(Context* context)
   if (get_config_bool("MaskColor", "Preview", true))
     m_checkPreview->setSelected(true);
 
-  button_ok->Click.connect(Bind<void>(&Window::closeWindow, m_window, button_ok));
-  button_cancel->Click.connect(Bind<void>(&Window::closeWindow, m_window, button_cancel));
+  button_ok->Click.connect(base::Bind<void>(&Window::closeWindow, m_window, button_ok));
+  button_cancel->Click.connect(base::Bind<void>(&Window::closeWindow, m_window, button_cancel));
 
-  m_buttonColor->Change.connect(Bind<void>(&MaskByColorCommand::maskPreview, this, Ref(reader)));
-  m_sliderTolerance->Change.connect(Bind<void>(&MaskByColorCommand::maskPreview, this, Ref(reader)));
-  m_checkPreview->Click.connect(Bind<void>(&MaskByColorCommand::maskPreview, this, Ref(reader)));
+
+  m_buttonColor->Change.connect(base::Bind<void>(&MaskByColorCommand::maskPreview, this, base::Ref(reader)));
+  m_sliderTolerance->Change.connect(base::Bind<void>(&MaskByColorCommand::maskPreview, this, base::Ref(reader)));
+  m_checkPreview->Click.connect(base::Bind<void>(&MaskByColorCommand::maskPreview, this, base::Ref(reader)));
 
   button_ok->setFocusMagnet(true);
   m_buttonColor->setExpansive(true);
@@ -151,7 +152,7 @@ void MaskByColorCommand::onExecute(Context* context)
   // Open the window
   m_window->openWindowInForeground();
 
-  bool apply = (m_window->getKiller() == button_ok);
+  bool apply = (m_window->closer() == button_ok);
 
   ContextWriter writer(reader);
   Document* document(writer.document());

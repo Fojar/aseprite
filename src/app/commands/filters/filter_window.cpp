@@ -61,7 +61,7 @@ FilterWindow::FilterWindow(const char* title, const char* cfgSection,
 
   if (m_tiledCheck) {
     m_tiledCheck->setSelected(tiledMode != TiledMode::NONE);
-    m_tiledCheck->Click.connect(Bind<void>(&FilterWindow::onTiledChange, this));
+    m_tiledCheck->Click.connect(base::Bind<void>(&FilterWindow::onTiledChange, this));
 
     m_vbox.addChild(m_tiledCheck);
   }
@@ -100,7 +100,7 @@ bool FilterWindow::doModal()
   openWindowInForeground();
 
   // Did the user press OK?
-  if (getKiller() == &m_okButton) {
+  if (closer() == &m_okButton) {
     m_preview.stop();
 
     // Apply the filter in background

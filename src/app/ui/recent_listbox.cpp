@@ -25,7 +25,7 @@
 #include "ui/listitem.h"
 #include "ui/message.h"
 #include "ui/paint_event.h"
-#include "ui/preferred_size_event.h"
+#include "ui/size_hint_event.h"
 #include "ui/system.h"
 #include "ui/view.h"
 
@@ -44,32 +44,32 @@ public:
   }
 
 protected:
-  void onPreferredSize(PreferredSizeEvent& ev) override {
-    SkinTheme* theme = static_cast<SkinTheme*>(getTheme());
+  void onSizeHint(SizeHintEvent& ev) override {
+    SkinTheme* theme = static_cast<SkinTheme*>(this->theme());
     Style* style = theme->styles.recentFile();
     Style* styleDetail = theme->styles.recentFileDetail();
     Style::State state;
-    gfx::Size sz1 = style->preferredSize(name().c_str(), state);
-    gfx::Size sz2 = styleDetail->preferredSize(path().c_str(), state);
-    ev.setPreferredSize(gfx::Size(sz1.w+sz2.w, MAX(sz1.h, sz2.h)));
+    gfx::Size sz1 = style->sizeHint(name().c_str(), state);
+    gfx::Size sz2 = styleDetail->sizeHint(path().c_str(), state);
+    ev.setSizeHint(gfx::Size(sz1.w+sz2.w, MAX(sz1.h, sz2.h)));
   }
 
   void onPaint(PaintEvent& ev) override {
-    SkinTheme* theme = static_cast<SkinTheme*>(getTheme());
-    Graphics* g = ev.getGraphics();
-    gfx::Rect bounds = getClientBounds();
+    SkinTheme* theme = static_cast<SkinTheme*>(this->theme());
+    Graphics* g = ev.graphics();
+    gfx::Rect bounds = clientBounds();
     Style* style = theme->styles.recentFile();
     Style* styleDetail = theme->styles.recentFileDetail();
 
     Style::State state;
-    if (hasMouse() && !getManager()->getCapture()) state += Style::hover();
+    if (hasMouse() && !manager()->getCapture()) state += Style::hover();
     if (isSelected()) state += Style::active();
-    if (getParent()->hasCapture()) state += Style::clicked();
+    if (parent()->hasCapture()) state += Style::clicked();
 
     std::string name = this->name();
     style->paint(g, bounds, name.c_str(), state);
 
-    gfx::Size textSize = style->preferredSize(name.c_str(), state);
+    gfx::Size textSize = style->sizeHint(name.c_str(), state);
     gfx::Rect detailsBounds(
       bounds.x+textSize.w, bounds.y,
       bounds.w-textSize.w, bounds.h);
@@ -77,12 +77,12 @@ protected:
   }
 
   void onClick() override {
-    static_cast<RecentListBox*>(getParent())->onClick(getText());
+    static_cast<RecentListBox*>(parent())->onClick(text());
   }
 
 private:
-  std::string name() const { return base::get_file_name(getText()); }
-  std::string path() const { return base::get_file_path(getText()); }
+  std::string name() const { return base::get_file_name(text()); }
+  std::string path() const { return base::get_file_path(text()); }
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -92,13 +92,13 @@ RecentListBox::RecentListBox()
 {
   m_recentFilesConn =
     App::instance()->getRecentFiles()->Changed.connect(
-      Bind(&RecentListBox::rebuildList, this));
+      base::Bind(&RecentListBox::rebuildList, this));
 }
 
 void RecentListBox::rebuildList()
 {
-  while (getLastChild())
-    removeChild(getLastChild());
+  while (lastChild())
+    removeChild(lastChild());
 
   onRebuildList();
 

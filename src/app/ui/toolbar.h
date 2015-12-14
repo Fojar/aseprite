@@ -48,7 +48,7 @@ namespace app {
 
   protected:
     bool onProcessMessage(ui::Message* msg) override;
-    void onPreferredSize(ui::PreferredSizeEvent& ev) override;
+    void onSizeHint(ui::SizeHintEvent& ev) override;
     void onPaint(ui::PaintEvent& ev) override;
 
   private:
@@ -86,7 +86,7 @@ namespace app {
     ui::Timer m_tipTimer;
     bool m_tipOpened;
 
-    Connection m_closeConn;
+    base::Connection m_closeConn;
   };
 
 } // namespace app

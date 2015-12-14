@@ -107,7 +107,7 @@ Manager::Manager()
   setBounds(gfx::Rect(0, 0, ui::display_w(), ui::display_h()));
   setVisible(true);
 
-  m_dirtyRegion = getBounds();
+  m_dirtyRegion = bounds();
 
   // Default manager is the first one (and is always visible).
   if (!m_defaultManager)
@@ -170,7 +170,7 @@ void Manager::run()
     set_mouse_cursor(kArrowCursor);
   }
 
-  while (!getChildren().empty())
+  while (!children().empty())
     loop.pumpMessages();
 }
 
@@ -205,14 +205,12 @@ void Manager::flipDisplay()
 bool Manager::generateMessages()
 {
   // First check: there are windows to manage?
-  if (getChildren().empty())
+  if (children().empty())
     return false;
 
   // New windows to show?
   if (!new_windows.empty()) {
-    UI_FOREACH_WIDGET(new_windows, it) {
-      Widget* window = *it;
-
+    for (auto window : new_windows) {
       // Relayout
       window->layout();
 
@@ -222,7 +220,7 @@ bool Manager::generateMessages()
 
       // Attract the focus to the magnetic widget...
       // 1) get the magnetic widget
-      Widget* magnet = findMagneticWidget(window->getRoot());
+      Widget* magnet = findMagneticWidget(window->window());
       // 2) if magnetic widget exists and it doesn't have the focus
       if (magnet && !magnet->hasFocus())
         setFocus(magnet);
@@ -401,9 +399,9 @@ void Manager::handleMouseMove(const gfx::Point& mousePos,
   broadcastMouseMessage(mouse_widgets_list);
 
   // Get the widget under the mouse
-  Widget* widget = NULL;
-  UI_FOREACH_WIDGET(mouse_widgets_list, it) {
-    widget = (*it)->pick(mousePos);
+  Widget* widget = nullptr;
+  for (auto mouseWidget : mouse_widgets_list) {
+    widget = mouseWidget->pick(mousePos);
     if (widget)
       break;
   }
@@ -482,8 +480,8 @@ void Manager::handleWindowZOrder()
     return;
 
   // The clicked window
-  Window* window = mouse_widget->getRoot();
-  Manager* win_manager = (window ? window->getManager(): NULL);
+  Window* window = mouse_widget->window();
+  Manager* win_manager = (window ? window->manager(): NULL);
 
   if ((window) &&
     // We cannot change Z-order of desktop windows
@@ -502,8 +500,8 @@ void Manager::handleWindowZOrder()
     if (window->isOnTop())
       win_manager->insertChild(0, window);
     else {
-      int pos = (int)win_manager->getChildren().size();
-      UI_FOREACH_WIDGET_BACKWARD(win_manager->getChildren(), it) {
+      int pos = (int)win_manager->children().size();
+      UI_FOREACH_WIDGET_BACKWARD(win_manager->children(), it) {
         if (static_cast<Window*>(*it)->isOnTop())
           break;
 
@@ -576,18 +574,18 @@ void Manager::enqueueMessage(Message* msg)
 
 Window* Manager::getTopWindow()
 {
-  return static_cast<Window*>(UI_FIRST_WIDGET(getChildren()));
+  return static_cast<Window*>(UI_FIRST_WIDGET(children()));
 }
 
 Window* Manager::getForegroundWindow()
 {
-  UI_FOREACH_WIDGET(getChildren(), it) {
-    Window* window = static_cast<Window*>(*it);
+  for (auto child : children()) {
+    Window* window = static_cast<Window*>(child);
     if (window->isForeground() ||
         window->isDesktop())
       return window;
   }
-  return NULL;
+  return nullptr;
 }
 
 Widget* Manager::getFocus()
@@ -772,7 +770,7 @@ void Manager::setCapture(Widget* widget)
 void Manager::attractFocus(Widget* widget)
 {
   // Get the magnetic widget
-  Widget* magnet = findMagneticWidget(widget->getRoot());
+  Widget* magnet = findMagneticWidget(widget->window());
 
   // If magnetic widget exists and it doesn't have the focus
   if (magnet && !magnet->hasFocus())
@@ -781,7 +779,7 @@ void Manager::attractFocus(Widget* widget)
 
 void Manager::focusFirstChild(Widget* widget)
 {
-  for (Widget* it=widget->getRoot(); it; it=next_widget(it)) {
+  for (Widget* it=widget->window(); it; it=next_widget(it)) {
     if (ACCEPT_FOCUS(it) && !(childs_accept_focus(it, true))) {
       setFocus(it);
       break;
@@ -951,8 +949,8 @@ void Manager::_closeWindow(Window* window, bool redraw_background)
 
   // Close all windows to this desktop
   if (window->isDesktop()) {
-    while (!getChildren().empty()) {
-      Window* child = static_cast<Window*>(getChildren().front());
+    while (!children().empty()) {
+      Window* child = static_cast<Window*>(children().front());
       if (child == window)
         break;
       else {
@@ -966,13 +964,13 @@ void Manager::_closeWindow(Window* window, bool redraw_background)
   }
 
   // Free all widgets of special states.
-  if (capture_widget && capture_widget->getRoot() == window)
+  if (capture_widget && capture_widget->window() == window)
     freeCapture();
 
-  if (mouse_widget && mouse_widget->getRoot() == window)
+  if (mouse_widget && mouse_widget->window() == window)
     freeMouse();
 
-  if (focus_widget && focus_widget->getRoot() == window)
+  if (focus_widget && focus_widget->window() == window)
     freeFocus();
 
   // Hide window.
@@ -1019,11 +1017,11 @@ bool Manager::onProcessMessage(Message* msg)
       // Continue sending the message to the children of all windows
       // (until a desktop or foreground window).
       Window* win = nullptr;
-      for (Widget* manchild : getChildren()) {
+      for (auto manchild : children()) {
         win = static_cast<Window*>(manchild);
 
         // Send to the window.
-        for (auto winchild : win->getChildren())
+        for (auto winchild : win->children())
           if (winchild->sendMessage(msg))
             return true;
 
@@ -1049,8 +1047,8 @@ bool Manager::onProcessMessage(Message* msg)
 
 void Manager::onResize(ResizeEvent& ev)
 {
-  gfx::Rect old_pos = getBounds();
-  gfx::Rect new_pos = ev.getBounds();
+  gfx::Rect old_pos = bounds();
+  gfx::Rect new_pos = ev.bounds();
   setBoundsQuietly(new_pos);
 
   int dx = new_pos.x - old_pos.x;
@@ -1058,14 +1056,14 @@ void Manager::onResize(ResizeEvent& ev)
   int dw = new_pos.w - old_pos.w;
   int dh = new_pos.h - old_pos.h;
 
-  UI_FOREACH_WIDGET(getChildren(), it) {
-    Window* window = static_cast<Window*>(*it);
+  for (auto child : children()) {
+    Window* window = static_cast<Window*>(child);
     if (window->isDesktop()) {
       window->setBounds(new_pos);
       break;
     }
 
-    gfx::Rect cpos = window->getBounds();
+    gfx::Rect cpos = window->bounds();
     int cx = cpos.x+cpos.w/2;
     int cy = cpos.y+cpos.h/2;
 
@@ -1090,14 +1088,14 @@ void Manager::onResize(ResizeEvent& ev)
 
 void Manager::onPaint(PaintEvent& ev)
 {
-  getTheme()->paintDesktop(ev);
+  theme()->paintDesktop(ev);
 }
 
 void Manager::onBroadcastMouseMessage(WidgetsList& targets)
 {
   // Ask to the first window in the "children" list to know how to
   // propagate mouse messages.
-  Widget* widget = UI_FIRST_WIDGET(getChildren());
+  Widget* widget = UI_FIRST_WIDGET(children());
   if (widget)
     widget->broadcastMouseMessage(targets);
 }
@@ -1112,8 +1110,8 @@ void Manager::onNewDisplayConfiguration()
   if (m_display) {
     int w = m_display->width() / m_display->scale();
     int h = m_display->height() / m_display->scale();
-    if ((getBounds().w != w ||
-         getBounds().h != h)) {
+    if ((bounds().w != w ||
+         bounds().h != h)) {
       setBounds(gfx::Rect(0, 0, w, h));
     }
   }
@@ -1123,19 +1121,19 @@ void Manager::onNewDisplayConfiguration()
   flushRedraw();
 }
 
-void Manager::onPreferredSize(PreferredSizeEvent& ev)
+void Manager::onSizeHint(SizeHintEvent& ev)
 {
   int w = 0, h = 0;
 
-  if (!getParent()) {        // hasn' parent?
-    w = getBounds().w;
-    h = getBounds().h;
+  if (!parent()) {        // hasn' parent?
+    w = bounds().w;
+    h = bounds().h;
   }
   else {
-    gfx::Rect pos = getParent()->getChildrenBounds();
+    gfx::Rect pos = parent()->childrenBounds();
 
-    UI_FOREACH_WIDGET(getChildren(), it) {
-      gfx::Rect cpos = (*it)->getBounds();
+    for (auto child : children()) {
+      gfx::Rect cpos = child->bounds();
       pos = pos.createUnion(cpos);
     }
 
@@ -1143,7 +1141,7 @@ void Manager::onPreferredSize(PreferredSizeEvent& ev)
     h = pos.h;
   }
 
-  ev.setPreferredSize(gfx::Size(w, h));
+  ev.setSizeHint(gfx::Size(w, h));
 }
 
 void Manager::pumpQueue()
@@ -1179,8 +1177,7 @@ void Manager::pumpQueue()
     }
 
     bool done = false;
-    UI_FOREACH_WIDGET(msg->recipients(), it2) {
-      Widget* widget = *it2;
+    for (auto widget : msg->recipients()) {
       if (!widget)
         continue;
 
@@ -1285,12 +1282,14 @@ void Manager::invalidateDisplayRegion(const gfx::Region& region)
 {
   // TODO intersect with getDrawableRegion()???
   gfx::Region reg1;
-  reg1.createIntersection(region, gfx::Region(getBounds()));
+  reg1.createIntersection(region, gfx::Region(bounds()));
 
   // Redraw windows from top to background.
   bool withDesktop = false;
-  UI_FOREACH_WIDGET(getChildren(), it) {
-    Window* window = static_cast<Window*>(*it);
+  for (auto child : children()) {
+    ASSERT(dynamic_cast<Window*>(child));
+    ASSERT(child->type() == kWindowWidget);
+    Window* window = static_cast<Window*>(child);
 
     // Invalidate regions of this window
     window->invalidateRegion(reg1);
@@ -1347,8 +1346,8 @@ bool Manager::someParentIsFocusStop(Widget* widget)
   if (widget->isFocusStop())
     return true;
 
-  if (widget->getParent())
-    return someParentIsFocusStop(widget->getParent());
+  if (widget->parent())
+    return someParentIsFocusStop(widget->parent());
   else
     return false;
 }
@@ -1358,8 +1357,8 @@ Widget* Manager::findMagneticWidget(Widget* widget)
 {
   Widget* found;
 
-  UI_FOREACH_WIDGET(widget->getChildren(), it) {
-    found = findMagneticWidget(*it);
+  for (auto child : widget->children()) {
+    found = findMagneticWidget(child);
     if (found)
       return found;
   }
@@ -1419,9 +1418,9 @@ static bool move_focus(Manager* manager, Message* msg)
 
   // Who have the focus
   if (focus_widget) {
-    window = focus_widget->getRoot();
+    window = focus_widget->window();
   }
-  else if (!manager->getChildren().empty()) {
+  else if (!manager->children().empty()) {
     window = manager->getTopWindow();
   }
 
@@ -1474,11 +1473,11 @@ static bool move_focus(Manager* manager, Message* msg)
           int i, j, x, y;
 
           // Position where the focus come
-          x = ((focus_widget) ? focus_widget->getBounds().x+focus_widget->getBounds().x2():
-                                window->getBounds().x+window->getBounds().x2())
+          x = ((focus_widget) ? focus_widget->bounds().x+focus_widget->bounds().x2():
+                                window->bounds().x+window->bounds().x2())
             / 2;
-          y = ((focus_widget) ? focus_widget->getBounds().y+focus_widget->getBounds().y2():
-                                window->getBounds().y+window->getBounds().y2())
+          y = ((focus_widget) ? focus_widget->bounds().y+focus_widget->bounds().y2():
+                                window->bounds().y+window->bounds().y2())
             / 2;
 
           c = focus_widget ? 1: 0;
@@ -1520,8 +1519,8 @@ static int count_widgets_accept_focus(Widget* widget)
 
   int count = 0;
 
-  UI_FOREACH_WIDGET(widget->getChildren(), it)
-    count += count_widgets_accept_focus(*it);
+  for (auto child : widget->children())
+    count += count_widgets_accept_focus(child);
 
   if ((count == 0) && (ACCEPT_FOCUS(widget)))
     count++;
@@ -1531,21 +1530,21 @@ static int count_widgets_accept_focus(Widget* widget)
 
 static bool childs_accept_focus(Widget* widget, bool first)
 {
-  UI_FOREACH_WIDGET(widget->getChildren(), it)
-    if (childs_accept_focus(*it, false))
+  for (auto child : widget->children())
+    if (childs_accept_focus(child, false))
       return true;
 
-  return first ? false: ACCEPT_FOCUS(widget);
+  return (first ? false: ACCEPT_FOCUS(widget));
 }
 
 static Widget* next_widget(Widget* widget)
 {
-  if (!widget->getChildren().empty())
-    return UI_FIRST_WIDGET(widget->getChildren());
+  if (!widget->children().empty())
+    return UI_FIRST_WIDGET(widget->children());
 
-  while (widget->getParent()->type() != kManagerWidget) {
-    WidgetsList::const_iterator begin = widget->getParent()->getChildren().begin();
-    WidgetsList::const_iterator end = widget->getParent()->getChildren().end();
+  while (widget->parent()->type() != kManagerWidget) {
+    WidgetsList::const_iterator begin = widget->parent()->children().begin();
+    WidgetsList::const_iterator end = widget->parent()->children().end();
     WidgetsList::const_iterator it = std::find(begin, end, widget);
 
     ASSERT(it != end);
@@ -1553,7 +1552,7 @@ static Widget* next_widget(Widget* widget)
     if ((it+1) != end)
       return *(it+1);
     else
-      widget = widget->getParent();
+      widget = widget->parent();
   }
 
   return NULL;
@@ -1561,34 +1560,34 @@ static Widget* next_widget(Widget* widget)
 
 static int cmp_left(Widget* widget, int x, int y)
 {
-  int z = x - (widget->getBounds().x+widget->getBounds().w/2);
+  int z = x - (widget->bounds().x+widget->bounds().w/2);
   if (z <= 0)
     return std::numeric_limits<int>::max();
-  return z + ABS((widget->getBounds().y+widget->getBounds().h/2) - y) * 8;
+  return z + ABS((widget->bounds().y+widget->bounds().h/2) - y) * 8;
 }
 
 static int cmp_right(Widget* widget, int x, int y)
 {
-  int z = (widget->getBounds().x+widget->getBounds().w/2) - x;
+  int z = (widget->bounds().x+widget->bounds().w/2) - x;
   if (z <= 0)
     return std::numeric_limits<int>::max();
-  return z + ABS((widget->getBounds().y+widget->getBounds().h/2) - y) * 8;
+  return z + ABS((widget->bounds().y+widget->bounds().h/2) - y) * 8;
 }
 
 static int cmp_up(Widget* widget, int x, int y)
 {
-  int z = y - (widget->getBounds().y+widget->getBounds().h/2);
+  int z = y - (widget->bounds().y+widget->bounds().h/2);
   if (z <= 0)
     return std::numeric_limits<int>::max();
-  return z + ABS((widget->getBounds().x+widget->getBounds().w/2) - x) * 8;
+  return z + ABS((widget->bounds().x+widget->bounds().w/2) - x) * 8;
 }
 
 static int cmp_down(Widget* widget, int x, int y)
 {
-  int z = (widget->getBounds().y+widget->getBounds().h/2) - y;
+  int z = (widget->bounds().y+widget->bounds().h/2) - y;
   if (z <= 0)
     return std::numeric_limits<int>::max();
-  return z + ABS((widget->getBounds().x+widget->getBounds().w/2) - x) * 8;
+  return z + ABS((widget->bounds().x+widget->bounds().w/2) - x) * 8;
 }
 
 } // namespace ui

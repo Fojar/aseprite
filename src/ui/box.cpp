@@ -11,7 +11,7 @@
 #include "gfx/size.h"
 #include "ui/box.h"
 #include "ui/message.h"
-#include "ui/preferred_size_event.h"
+#include "ui/size_hint_event.h"
 #include "ui/resize_event.h"
 #include "ui/theme.h"
 
@@ -26,10 +26,10 @@ Box::Box(int align)
   initTheme();
 }
 
-void Box::onPreferredSize(PreferredSizeEvent& ev)
+void Box::onSizeHint(SizeHintEvent& ev)
 {
 #define ADD_CHILD_SIZE(w, h) {                      \
-    if (getAlign() & HOMOGENEOUS)                   \
+    if (align() & HOMOGENEOUS)                      \
       prefSize.w = MAX(prefSize.w, childSize.w);    \
     else                                            \
       prefSize.w += childSize.w;                    \
@@ -37,24 +37,24 @@ void Box::onPreferredSize(PreferredSizeEvent& ev)
   }
 
 #define FINAL_ADJUSTMENT(w) {                            \
-    if (getAlign() & HOMOGENEOUS)                        \
+    if (align() & HOMOGENEOUS)                           \
       prefSize.w *= visibleChildren;                     \
     prefSize.w += childSpacing() * (visibleChildren-1);  \
   }
 
   int visibleChildren = 0;
-  for (Widget* child : getChildren()) {
+  for (auto child : children()) {
     if (!child->hasFlags(HIDDEN))
       ++visibleChildren;
   }
 
   Size prefSize(0, 0);
-  for (Widget* child : getChildren()) {
+  for (auto child : children()) {
     if (child->hasFlags(HIDDEN))
       continue;
 
-    Size childSize = child->getPreferredSize();
-    if (getAlign() & HORIZONTAL) {
+    Size childSize = child->sizeHint();
+    if (align() & HORIZONTAL) {
       ADD_CHILD_SIZE(w, h);
     }
     else {
@@ -63,7 +63,7 @@ void Box::onPreferredSize(PreferredSizeEvent& ev)
   }
 
   if (visibleChildren > 0) {
-    if (getAlign() & HORIZONTAL) {
+    if (align() & HORIZONTAL) {
       FINAL_ADJUSTMENT(w);
     }
     else {
@@ -74,7 +74,7 @@ void Box::onPreferredSize(PreferredSizeEvent& ev)
   prefSize.w += border().width();
   prefSize.h += border().height();
 
-  ev.setPreferredSize(prefSize);
+  ev.setSizeHint(prefSize);
 }
 
 void Box::onResize(ResizeEvent& ev)
@@ -82,25 +82,25 @@ void Box::onResize(ResizeEvent& ev)
 #define LAYOUT_CHILDREN(x, w) {                                         \
     availExtraSize = availSize.w - prefSize.w;                          \
     availSize.w -= childSpacing() * (visibleChildren-1);                \
-    if (getAlign() & HOMOGENEOUS)                                       \
+    if (align() & HOMOGENEOUS)                                          \
       homogeneousSize = availSize.w / visibleChildren;                  \
                                                                         \
-    Rect childPos(getChildrenBounds());                                 \
+    Rect childPos(childrenBounds());                                    \
     int i = 0, j = 0;                                                   \
-    for (Widget* child : getChildren()) {                               \
+    for (auto child : children()) {                                     \
       if (child->hasFlags(HIDDEN))                                      \
         continue;                                                       \
                                                                         \
       int size = 0;                                                     \
                                                                         \
-      if (getAlign() & HOMOGENEOUS) {                                   \
+      if (align() & HOMOGENEOUS) {                                      \
         if (i < visibleChildren-1)                                      \
           size = homogeneousSize;                                       \
         else                                                            \
           size = availSize.w;                                           \
       }                                                                 \
       else {                                                            \
-        size = child->getPreferredSize().w;                             \
+        size = child->sizeHint().w;                                     \
                                                                         \
         if (child->isExpansive()) {                                     \
           int extraSize = (availExtraSize / (expansiveChildren-j));     \
@@ -119,11 +119,11 @@ void Box::onResize(ResizeEvent& ev)
     }                                                                   \
   }
 
-  setBoundsQuietly(ev.getBounds());
+  setBoundsQuietly(ev.bounds());
 
   int visibleChildren = 0;
   int expansiveChildren = 0;
-  for (Widget* child : getChildren()) {
+  for (auto child : children()) {
     if (!child->hasFlags(HIDDEN)) {
       ++visibleChildren;
       if (child->isExpansive())
@@ -132,15 +132,15 @@ void Box::onResize(ResizeEvent& ev)
   }
 
   if (visibleChildren > 0) {
-    Size prefSize(getPreferredSize());
-    Size availSize(getChildrenBounds().getSize());
+    Size prefSize(sizeHint());
+    Size availSize(childrenBounds().size());
     int homogeneousSize = 0;
     int availExtraSize = 0;
 
     prefSize.w -= border().width();
     prefSize.h -= border().height();
 
-    if (getAlign() & HORIZONTAL) {
+    if (align() & HORIZONTAL) {
       LAYOUT_CHILDREN(x, w);
     }
     else {
@@ -151,7 +151,7 @@ void Box::onResize(ResizeEvent& ev)
 
 void Box::onPaint(PaintEvent& ev)
 {
-  getTheme()->paintBox(ev);
+  theme()->paintBox(ev);
 }
 
 } // namespace ui

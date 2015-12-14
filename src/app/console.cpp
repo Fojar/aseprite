@@ -62,7 +62,7 @@ Console::Console(Context* ctx)
     return;
 
   // The "button" closes the console
-  button->Click.connect(Bind<void>(&Window::closeWindow, window, button));
+  button->Click.connect(base::Bind<void>(&Window::closeWindow, window, button));
 
   view->attachToView(textbox);
 
@@ -138,7 +138,7 @@ void Console::printf(const char* format, ...)
     wid_console->invalidate();
   }
 
-  const std::string& text = wid_textbox->getText();
+  const std::string& text = wid_textbox->text();
 
   std::string final;
   if (!text.empty())

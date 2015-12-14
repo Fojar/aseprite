@@ -209,6 +209,7 @@ add_library(app-lib
   commands/cmd_mask_by_color.cpp
   commands/cmd_mask_content.cpp
   commands/cmd_merge_down_layer.cpp
+  commands/cmd_modify_selection.cpp
   commands/cmd_move_cel.cpp
   commands/cmd_move_mask.cpp
   commands/cmd_new_brush.cpp
@@ -242,6 +243,7 @@ add_library(app-lib
   commands/cmd_save_mask.cpp
   commands/cmd_save_palette.cpp
   commands/cmd_scroll.cpp
+  commands/cmd_scroll_center.cpp
   commands/cmd_set_color_selector.cpp
   commands/cmd_set_ink_type.cpp
   commands/cmd_set_loop_section.cpp

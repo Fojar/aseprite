@@ -65,14 +65,14 @@ enum AniAction {
 AniControls::AniControls()
   : ButtonSet(5)
 {
-  SkinTheme* theme = static_cast<SkinTheme*>(this->getTheme());
+  SkinTheme* theme = static_cast<SkinTheme*>(this->theme());
 
   addItem(theme->parts.aniFirst());
   addItem(theme->parts.aniPrevious());
   addItem(theme->parts.aniPlay());
   addItem(theme->parts.aniNext());
   addItem(theme->parts.aniLast());
-  ItemChange.connect(Bind(&AniControls::onClickButton, this));
+  ItemChange.connect(base::Bind(&AniControls::onClickButton, this));
 
   setTriggerOnMouseUp(true);
   setTransparent(true);
@@ -86,7 +86,7 @@ AniControls::AniControls()
 
 void AniControls::updateUsingEditor(Editor* editor)
 {
-  SkinTheme* theme = static_cast<SkinTheme*>(this->getTheme());
+  SkinTheme* theme = static_cast<SkinTheme*>(this->theme());
   getItem(ACTION_PLAY)->setIcon(
     (editor && editor->isPlaying() ?
       theme->parts.aniStop():

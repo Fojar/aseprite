@@ -28,7 +28,7 @@ namespace app {
     protected:
       void onPaint(ui::PaintEvent& ev) override;
       bool onProcessMessage(ui::Message* msg) override;
-      void onPreferredSize(ui::PreferredSizeEvent& ev) override;
+      void onSizeHint(ui::SizeHintEvent& ev) override;
     private:
       skin::SkinPartPtr m_icon;
     };
@@ -49,8 +49,8 @@ namespace app {
     void setTriggerOnMouseUp(bool state);
     void setMultipleSelection(bool state);
 
-    Signal1<void, Item*> ItemChange;
-    Signal1<void, Item*> RightClick;
+    base::Signal1<void, Item*> ItemChange;
+    base::Signal1<void, Item*> RightClick;
 
   protected:
     virtual void onItemChange(Item* item);

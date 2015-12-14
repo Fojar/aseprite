@@ -18,7 +18,7 @@
 #include "ui/entry.h"
 #include "ui/graphics.h"
 #include "ui/label.h"
-#include "ui/preferred_size_event.h"
+#include "ui/size_hint_event.h"
 #include "ui/slider.h"
 #include "ui/theme.h"
 
@@ -124,9 +124,9 @@ void ColorSliders::resetRelativeSliders()
     slider->setValue(0);
 }
 
-void ColorSliders::onPreferredSize(PreferredSizeEvent& ev)
+void ColorSliders::onSizeHint(SizeHintEvent& ev)
 {
-  ev.setPreferredSize(m_grid.getPreferredSize());
+  ev.setSizeHint(m_grid.sizeHint());
 }
 
 void ColorSliders::addSlider(Channel channel, const char* labelText, int min, int max)
@@ -146,9 +146,9 @@ void ColorSliders::addSlider(Channel channel, const char* labelText, int min, in
   absSlider->setDoubleBuffered(true);
   get_skin_property(entry)->setLook(MiniLook);
 
-  absSlider->Change.connect(Bind<void>(&ColorSliders::onSliderChange, this, m_absSlider.size()-1));
-  relSlider->Change.connect(Bind<void>(&ColorSliders::onSliderChange, this, m_relSlider.size()-1));
-  entry->Change.connect(Bind<void>(&ColorSliders::onEntryChange, this, m_entry.size()-1));
+  absSlider->Change.connect(base::Bind<void>(&ColorSliders::onSliderChange, this, m_absSlider.size()-1));
+  relSlider->Change.connect(base::Bind<void>(&ColorSliders::onSliderChange, this, m_relSlider.size()-1));
+  entry->Change.connect(base::Bind<void>(&ColorSliders::onEntryChange, this, m_entry.size()-1));
 
   HBox* box = new HBox();
   box->addChild(absSlider);
@@ -192,7 +192,7 @@ void ColorSliders::onSliderChange(int i)
 void ColorSliders::onEntryChange(int i)
 {
   // Update the slider related to the changed entry widget.
-  int value = m_entry[i]->getTextInt();
+  int value = m_entry[i]->textInt();
 
   Slider* slider = (m_mode == Absolute ? m_absSlider[i]: m_relSlider[i]);
   value = MID(slider->getMinValue(), value, slider->getMaxValue());

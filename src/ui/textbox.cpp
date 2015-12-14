@@ -13,7 +13,7 @@
 #include "gfx/size.h"
 #include "ui/intern.h"
 #include "ui/message.h"
-#include "ui/preferred_size_event.h"
+#include "ui/size_hint_event.h"
 #include "ui/system.h"
 #include "ui/theme.h"
 #include "ui/view.h"
@@ -37,9 +37,9 @@ bool TextBox::onProcessMessage(Message* msg)
       if (hasFocus()) {
         View* view = View::getView(this);
         if (view) {
-          gfx::Rect vp = view->getViewportBounds();
-          gfx::Point scroll = view->getViewScroll();
-          int textheight = getTextHeight();
+          gfx::Rect vp = view->viewportBounds();
+          gfx::Point scroll = view->viewScroll();
+          int textheight = textHeight();
 
           switch (static_cast<KeyMessage*>(msg)->scancode()) {
 
@@ -79,7 +79,7 @@ bool TextBox::onProcessMessage(Message* msg)
               break;
 
             case kKeyEnd:
-              scroll.y = getBounds().h - vp.h;
+              scroll.y = bounds().h - vp.h;
               view->setViewScroll(scroll);
               break;
 
@@ -105,7 +105,7 @@ bool TextBox::onProcessMessage(Message* msg)
     case kMouseMoveMessage: {
       View* view = View::getView(this);
       if (view && hasCapture()) {
-        gfx::Point scroll = view->getViewScroll();
+        gfx::Point scroll = view->viewScroll();
         gfx::Point newPos = static_cast<MouseMessage*>(msg)->position();
 
         scroll += m_oldPos - newPos;
@@ -129,9 +129,9 @@ bool TextBox::onProcessMessage(Message* msg)
     case kMouseWheelMessage: {
       View* view = View::getView(this);
       if (view) {
-        gfx::Point scroll = view->getViewScroll();
+        gfx::Point scroll = view->viewScroll();
 
-        scroll += static_cast<MouseMessage*>(msg)->wheelDelta() * getTextHeight()*3;
+        scroll += static_cast<MouseMessage*>(msg)->wheelDelta() * textHeight()*3;
 
         view->setViewScroll(scroll);
       }
@@ -144,10 +144,10 @@ bool TextBox::onProcessMessage(Message* msg)
 
 void TextBox::onPaint(PaintEvent& ev)
 {
-  getTheme()->paintTextBox(ev);
+  theme()->paintTextBox(ev);
 }
 
-void TextBox::onPreferredSize(PreferredSizeEvent& ev)
+void TextBox::onSizeHint(SizeHintEvent& ev)
 {
   int w = 0;
   int h = 0;
@@ -158,15 +158,15 @@ void TextBox::onPreferredSize(PreferredSizeEvent& ev)
 
   drawTextBox(NULL, this, &w, &h, gfx::ColorNone, gfx::ColorNone);
 
-  if (this->getAlign() & WORDWRAP) {
+  if (this->align() & WORDWRAP) {
     View* view = View::getView(this);
     int width, min = w;
 
     if (view) {
-      width = view->getViewportBounds().w;
+      width = view->viewportBounds().w;
     }
     else {
-      width = getBounds().w;
+      width = bounds().w;
     }
 
     w = MAX(min, width);
@@ -175,7 +175,7 @@ void TextBox::onPreferredSize(PreferredSizeEvent& ev)
     w = min;
   }
 
-  ev.setPreferredSize(gfx::Size(w, h));
+  ev.setSizeHint(gfx::Size(w, h));
 }
 
 void TextBox::onSetText()

@@ -105,13 +105,13 @@ void NewFileCommand::onExecute(Context* context)
   // Open the window
   window.openWindowInForeground();
 
-  if (window.getKiller() == window.okButton()) {
+  if (window.closer() == window.okButton()) {
     bool ok = false;
 
     // Get the options
     format = (doc::PixelFormat)window.colorMode()->selectedItem();
-    w = window.width()->getTextInt();
-    h = window.height()->getTextInt();
+    w = window.width()->textInt();
+    h = window.height()->textInt();
     bg = window.bgColor()->selectedItem();
 
     static_assert(IMAGE_RGB == 0, "RGB pixel format should be 0");

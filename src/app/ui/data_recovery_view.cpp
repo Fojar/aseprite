@@ -24,7 +24,7 @@
 #include "ui/entry.h"
 #include "ui/listitem.h"
 #include "ui/message.h"
-#include "ui/preferred_size_event.h"
+#include "ui/size_hint_event.h"
 #include "ui/resize_event.h"
 #include "ui/system.h"
 #include "ui/view.h"
@@ -48,29 +48,29 @@ public:
     addChild(&m_openButton);
     addChild(&m_deleteButton);
 
-    m_openButton.Click.connect(Bind(&Item::onOpen, this));
-    m_deleteButton.Click.connect(Bind(&Item::onDelete, this));
+    m_openButton.Click.connect(base::Bind(&Item::onOpen, this));
+    m_deleteButton.Click.connect(base::Bind(&Item::onDelete, this));
 
     setup_mini_look(&m_openButton);
     setup_mini_look(&m_deleteButton);
   }
 
-  Signal0<void> Regenerate;
+  base::Signal0<void> Regenerate;
 
 protected:
-  void onPreferredSize(PreferredSizeEvent& ev) override {
-    gfx::Size sz = m_deleteButton.getPreferredSize();
+  void onSizeHint(SizeHintEvent& ev) override {
+    gfx::Size sz = m_deleteButton.sizeHint();
     sz.h += 4*guiscale();
-    ev.setPreferredSize(sz);
+    ev.setSizeHint(sz);
   }
 
   void onResize(ResizeEvent& ev) override {
     ListItem::onResize(ev);
 
-    gfx::Rect rc = ev.getBounds();
-    gfx::Size sz1 = m_openButton.getPreferredSize();
+    gfx::Rect rc = ev.bounds();
+    gfx::Size sz1 = m_openButton.sizeHint();
     sz1.w *= 2*guiscale();
-    gfx::Size sz2 = m_deleteButton.getPreferredSize();
+    gfx::Size sz2 = m_deleteButton.sizeHint();
     int h = rc.h*3/4;
     int sep = 8*guiscale();
     m_openButton.setBounds(gfx::Rect(rc.x+rc.w-sz2.w-sz1.w-2*sep, rc.y+rc.h/2-h/2, sz1.w, h));
@@ -86,7 +86,7 @@ protected:
   }
 
   void onDelete() {
-    Widget* parent = getParent();
+    Widget* parent = this->parent();
 
     if (m_backup) {
       // Delete one backup
@@ -97,7 +97,7 @@ protected:
 
       m_session->deleteBackup(m_backup);
 
-      Widget* parent = getParent();
+      Widget* parent = this->parent(); // TODO remove this line
       parent->removeChild(this);
       deferDelete();
     }
@@ -136,7 +136,7 @@ DataRecoveryView::DataRecoveryView(crash::DataRecovery* dataRecovery)
   : Box(VERTICAL)
   , m_dataRecovery(dataRecovery)
 {
-  SkinTheme* theme = static_cast<SkinTheme*>(getTheme());
+  SkinTheme* theme = static_cast<SkinTheme*>(this->theme());
   setBgColor(theme->colors.workspace());
 
   addChild(&m_view);
@@ -153,7 +153,7 @@ DataRecoveryView::~DataRecoveryView()
 
 void DataRecoveryView::fillList()
 {
-  WidgetsList children = m_listBox.getChildren();
+  WidgetsList children = m_listBox.children();
   for (auto child : children) {
     m_listBox.removeChild(child);
     child->deferDelete();
